@@ -1,3 +1,8 @@
 .npmignore
+.gitignore
 .github/
+build.js
 test.js
+views/
+public/
+index.js

@@ -1,10 +1,14 @@
 {
   "name": "@aspiesoft/basic-site",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A simple module that runs express with a common setup for a basic website.",
   "author": "AspieSoft",
   "license": "MIT",
-  "main": "index.js",
+  "main": "index.min.js",
+  "scripts": {
+    "test": "node test.js",
+    "build": "node build.js"
+  },
   "engines": {
     "node": ">=12.0"
   },
@@ -35,5 +39,8 @@
     "@aspiesoft/regve": "^1.2.0",
     "@aspiesoft/inputmd": "^0.1.2",
     "fs-extra": "^10.0.0"
+  },
+  "devDependencies": {
+    "@aspiesoft/miniforge-js": "^1.1.0"
   }
 }

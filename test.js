@@ -1,5 +1,7 @@
 const {join} = require('path');
 const server = require('./index');
+// const server = require('./index.min');
+
 
 server.viewEngine({
   template: 'layout',

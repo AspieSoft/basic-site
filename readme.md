@@ -37,10 +37,10 @@ Behind the sense, this module adds in middleware for basic security and compress
 ## Installation
 
 ```shell script
-npm install @aspiesoft/basic-site
+npm install basic-site
 
 # or without optional dependencies
-npm install @aspiesoft/basic-site --no-optional
+npm install basic-site --no-optional
 ```
 
 ## Setup
@@ -48,7 +48,7 @@ npm install @aspiesoft/basic-site --no-optional
 You can use any view engine you want. By default, this module runs on [regve](https://github.com/aspiesoft/regve) made by AspieSoft. It has a similar syntax to handlebars, but with more features and better stability. It also supports a markdown like syntax.
 
 ```js
-const server = require('@aspiesoft/basic-site');
+const server = require('basic-site');
 
 
 // basic setup
