@@ -1,6 +1,6 @@
 {
   "name": "@aspiesoft/basic-site",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A simple module that runs express with a common setup for a basic website.",
   "author": "AspieSoft",
   "license": "MIT",
@@ -14,7 +14,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/aspiesoft/express-simplified.git"
+    "url": "git://github.com/aspiesoft/basic-site.git"
   },
   "keywords": [
     "nodejs",
