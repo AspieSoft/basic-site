@@ -1,6 +1,6 @@
 {
   "name": "@aspiesoft/basic-site",
-  "version": "1.0.2",
+  "version": "1.2.0",
   "description": "A simple module that runs express with a common setup for a basic website.",
   "author": "AspieSoft",
   "license": "MIT",
@@ -36,7 +36,7 @@
     "validator": "^13.7.0"
   },
   "optionalDependencies": {
-    "@aspiesoft/regve": "^1.2.0",
+    "@aspiesoft/regve": "^1.3.0",
     "@aspiesoft/inputmd": "^0.1.2",
     "fs-extra": "^10.0.0"
   },
