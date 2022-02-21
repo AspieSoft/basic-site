@@ -26,6 +26,11 @@ const root = (function() {
   return join(__dirname).toString().replace(/[\/\\]node_modules[\/\\][^\\\/]+[\\\/]?$/, '');
 })();
 
+const GlobalOptions = {
+  expressExtended: false,
+  bodyParserExtended: false,
+};
+
 const regve = (() => {
   try {
     return require('@aspiesoft/regve');
@@ -274,9 +279,9 @@ function start(port = 3000, pageHandler) {
 
   // middleware
   app.use(express.json({limit: '1mb'}));
-  app.use(express.urlencoded({extended: false}));
+  app.use(express.urlencoded({extended: GlobalOptions.expressExtended}));
   app.use(cookieParser());
-  app.use(bodyParser.urlencoded({extended: false}));
+  app.use(bodyParser.urlencoded({extended: GlobalOptions.bodyParserExtended}));
   app.use(bodyParser.json({type: ['json', 'application/csp-report'], limit: '1mb'}));
   app.use(compression());
   isBot.extend(['validator']);
@@ -568,6 +573,11 @@ module.exports = (() => {
   exports.viewEngine = setViewEngine;
   exports.pages = setPages;
   exports.static = setStaticPath;
+
+  exports.extended = function(express = true, bodyParser = true){
+    GlobalOptions.expressExtended = express;
+    GlobalOptions.bodyParserExtended = bodyParser;
+  };
 
   exports.randToken = generateRandToken;
   exports.clean = clean;
