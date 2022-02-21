@@ -1,6 +1,6 @@
 // In God We Trust
 
-const {join} = require('path');
+const {join, resolve} = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const http = require('http');
@@ -16,7 +16,7 @@ const geoIP = require('geoip-lite');
 const isBot = require('isbot-fast');
 const forceSSL = require('express-force-ssl');
 
-const root = (function() {
+let root = (function() {
   if(require.main.filename) {
     return clean(require.main.filename.toString()).replace(/[\\\/][^\\\/]+[\\\/]?$/, '');
   }
@@ -578,6 +578,10 @@ module.exports = (() => {
     GlobalOptions.expressExtended = express;
     GlobalOptions.bodyParserExtended = bodyParser;
   };
+
+  exports.setRoot = function(path){
+    root = clean(resolve(path.toString()).toString()).replace(/[\\\/][^\\\/]+[\\\/]?$/, '');
+  }
 
   exports.randToken = generateRandToken;
   exports.clean = clean;
