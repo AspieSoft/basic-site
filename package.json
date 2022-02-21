@@ -1,6 +1,6 @@
 {
   "name": "@aspiesoft/basic-site",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "description": "A simple module that runs express with a common setup for a basic website.",
   "author": "AspieSoft",
   "license": "MIT",
