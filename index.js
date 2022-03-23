@@ -87,6 +87,39 @@ function setStaticPath(path = true, path2) {
   }
 }
 
+
+let expressLimit = '1mb';
+function setExpressLimit(limit){
+  if(typeof limit === 'number'){
+    expressLimit = limit.toString() + 'mb';
+  }else{
+    expressLimit = limit;
+  }
+}
+
+
+function safeJoinPath(){
+  let path = resolve(root);
+
+  let arg0 = resolve(arguments[0]);
+  let iStart = 0;
+  if(arg0.startsWith(root)){
+    path = arg0;
+    iStart = 1;
+  }
+
+  for(let i = iStart; i < arguments.length; i++){
+    let newPath = join(path, arguments[i].replace(/\.\./g, '.').replace(/%/g, ''));
+    if(newPath === path || !newPath.startsWith(path)){
+      return null;
+    }
+    path = newPath;
+  }
+
+  return path;
+}
+
+
 function start(port = 3000, pageHandler) {
 
   if((varType(port) === 'string' && Number(port)) || ['function', 'object'].includes(varType(port))) {
@@ -169,6 +202,14 @@ function start(port = 3000, pageHandler) {
       app.use('/', express.static(staticPath));
       static = '/';
     }
+
+    if(!fs.existsSync(staticPath)){
+      fs.mkdirSync(staticPath);
+    }
+  }else if(staticPath === undefined){
+    staticPath = join(root, 'public');
+    app.use('/', express.static(staticPath));
+    static = '/';
 
     if(!fs.existsSync(staticPath)){
       fs.mkdirSync(staticPath);
@@ -278,11 +319,11 @@ function start(port = 3000, pageHandler) {
 
 
   // middleware
-  app.use(express.json({limit: '1mb'}));
+  app.use(express.json({limit: expressLimit}));
   app.use(express.urlencoded({extended: GlobalOptions.expressExtended}));
   app.use(cookieParser());
   app.use(bodyParser.urlencoded({extended: GlobalOptions.bodyParserExtended}));
-  app.use(bodyParser.json({type: ['json', 'application/csp-report'], limit: '1mb'}));
+  app.use(bodyParser.json({type: ['json', 'application/csp-report'], limit: expressLimit}));
   app.use(compression());
   isBot.extend(['validator']);
 
@@ -292,6 +333,7 @@ function start(port = 3000, pageHandler) {
     req.clean = clean;
     req.varType = varType;
     req.validator = validator;
+    req.joinPath = safeJoinPath;
 
     req.query = clean(req.query);
     req.body = clean(req.body);
@@ -299,6 +341,7 @@ function start(port = 3000, pageHandler) {
     req.data = clean(req.data);
 
     req.static = static;
+    req.limit = expressLimit;
 
     let host = clean(req.hostname || req.headers.host || '');
     if(process.env.NODE_ENV === 'production' && (!host || varType(host) !== 'string' || host === '' || !validator.isFQDN(host))) {
@@ -573,6 +616,7 @@ module.exports = (() => {
   exports.viewEngine = setViewEngine;
   exports.pages = setPages;
   exports.static = setStaticPath;
+  exports.limit = setExpressLimit;
 
   exports.extended = function(express = true, bodyParser = true){
     GlobalOptions.expressExtended = express;
@@ -596,6 +640,7 @@ module.exports = (() => {
   exports.isBot = isBot;
 
   exports.root = root;
+  exports.path = safeJoinPath;
 
   return exports;
 })();

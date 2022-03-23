@@ -10,7 +10,7 @@
 
 [![paypal](https://img.shields.io/badge/buy%20me%20a%20coffee-paypal-blue)](https://buymeacoffee.aspiesoft.com/)
 
-A simple module that runs express with a common setup for a basic website.
+A module that runs express with an easy setup and additional basic security for a small and simple website.
 
 Develop your express sites faster.
 
@@ -26,13 +26,18 @@ Behind the sense, this module adds in middleware for basic security and compress
 - Combines req.body and req.query into a single req.data (post data has priority over get data).
 - In production (process.env.NODE_ENV === 'production'), forces ssl and verifies if the hostname is a FQDN with validator.
 - Checks if the request is from localhost.
-- Gets the geo IP country code with the geoip-country module.
+- Gets the users geo IP with the geoip-lite module.
 - Runs a simple check to detect bots using the isbot-fast module (could be useful for SEO development).
-- Simplifies the req.url to remove extra / at end, and removes query vars from the url (still accessible with req.query).
+- Simplifies the req.url to remove any extra / at the end, and removes query vars from the url (still accessible with req.query).
 - Only allows GET and POST methods with "Access-Control-Allow-Methods".
-- Limits the request size to 1mb.
+- Limits the request size to 1mb (this size can be modified).
 - Adds a /ping url that runs before the view engine (simply returns "pong!") (useful for quickly checking if the server is online).
 - You still have full access to the express module.
+
+## Whats New In Recent Updated?
+
+- Added a server.path function to safely resolve and join paths without backtracking
+- Added an option to change the memory limit of user requests
 
 ## Installation
 
@@ -73,15 +78,13 @@ server(port);
 
 // advanced setup
 
-const {join} = require('path');
-
 // set static path (optional) (default: public)
-server.static('/', join(__dirname, 'public'));
+server.static('/', server.path(__dirname, 'public'));
 
 // set view engine (optional) (default: regve with below options)
 server.viewEngine('regve' || 'inputmd', {
   template: 'layout',
-  dir: join(__dirname, 'views'),
+  dir: server.path(__dirname, 'views'),
   type: 'html',
   cache: '1D',
 });
@@ -92,12 +95,17 @@ server.viewEngine('regve' || 'inputmd', {
 // inputmd simply adds a markdown like syntax to html
 // it allows basic inputs similar to handlebars, and allows importing files (but has no functions or if statements)
 
+
+// limit data size for post requests
+server.limit('1mb'); // default = 1mb
+server.limit(10); // 10mb (numbers are converted to an mb string)
+
 // set any other view engine (optional)
 server.viewEngine(function(app){
   // setup view engine
   app.engine('html', regve({
     template: 'layout',
-    dir: join(__dirname, 'views'),
+    dir: server.path(__dirname, 'views'),
     type: 'html',
     cache: '1D',
   }));
@@ -149,33 +157,36 @@ function(req, res, next){
   req.startTime // the time the request started (time is set after some basics like the helmet module have run)
   req.static // the static url if set (example: "/cdn") or undefined
   req.root // the root file this module detected as the main file you used to start the server
+  req.limit // returns the data limit for post requests (default: 1mb)
   req.clean(jsVar) // sanitizes any variable type and ensures valid utf8 (also checks nested objects and arrays)
   req.varType(jsVar) // returns the typeof variable and also returns if the var is an array, null, or regex
+  req.joinPath('path', 'to', 'file', 'from', 'app', 'root') // a safer way to use path.join which prevents backtracking when combining by cammas, and enforces a path to stay within the root of your app
   req.validator // returns the validator module
   req.hostUrl // returns the host url without the http:// or https://
   req.browser // returns the user-agent
   req.uip // returns the ip after cleaning it up and fixing ipv6
   req.localhost // returns true if the request is from localhost (127.0.0.1, localhost, ::1)
-  req.geo // returns the result from the ip lookup from the geoip-country module
+  req.geo // returns the result from the ip lookup from the geoip-lite module
   req.bot // returns the result from the isbot-fast module after passing the browser (user-agent)
   req.url // created by express, and modified by this module to remove query vars and the trailing / at the end of the string
 
-  req.body // the POST data sent by the user
-  req.query // the GET data sent by the user
-  req.data // the combined POST and GET data sent by the user (with POST taking priority over GET)
+  req.body // the POST/body data sent by the user
+  req.query // the GET/query data sent by the user
+  req.data // the combined POST/body and GET/query data sent by the user (with POST/body taking priority over GET/query)
 }
 
 // other useful functions
-server.randToken(size /* 64 */) // returns crypto.randomBytes(size).toString('hex')
-server.clean // same as req.clean
-server.varType // same as req.varType
-server.root // same as req.root
+server.randToken(size /* default: 64 */) // returns crypto.randomBytes(size).toString('hex')
+server.path('path', 'to', 'file', 'from', 'app', 'root') // a safer way to use path.join which prevents backtracking when combining by cammas, and enforces a path to stay within the root of your app
+server.clean(userInput) // sanitizes an input of any valid json data type, and enforces valid utf8 (same as req.clean)
+server.varType(myVar) // kind of like typeof, but also returns 'array', 'regex', and 'null' (same as req.varType)
+server.root // returns the root path of your app (same as req.root)
 
 server.server // returns the server object produced after starting the module
 server.express // returns the express module
 server.helmet // returns the helmet module
 server.validator // returns the validator module
-server.geoIP // returns the geoip-country module
+server.geoIP // returns the geoip-lite module
 server.isBot // returns the isbot-fast module
 
 ```
