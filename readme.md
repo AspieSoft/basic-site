@@ -58,7 +58,7 @@ const server = require('basic-site');
 
 
 // optional
-server.pwa({name: 'App Name', short_name: 'App', icon: 'favicon.ico'});
+server.pwa({name: 'App Name', short_name: 'App', icon: 'favicon.ico', icon_background: '#ffffff'});
 
 
 // basic setup

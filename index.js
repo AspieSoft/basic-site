@@ -101,7 +101,7 @@ function setStaticPath(path = true, path2) {
 
 
 let pwaOpts = undefined;
-function setPWA({name, short_name, start_url, theme_color, background_color, display, orientation, icon} = {}, otherOpts = {}){
+function setPWA({name, short_name, start_url, theme_color, background_color, display, orientation, icon, icon_background} = {}, otherOpts = {}){
   pwaOpts = {
     name: name || 'App Name',
     short_name: short_name || 'App',
@@ -111,6 +111,7 @@ function setPWA({name, short_name, start_url, theme_color, background_color, dis
     display: display || 'standalone',
     orientation: orientation || 'portrait',
     icon: icon || 'favicon.ico',
+    icon_background: icon_background,
     ...otherOpts,
   }
 }
@@ -272,7 +273,7 @@ function start(port = 3000, pageHandler) {
         try {
           fs.watchFile(pwaIconPath, async () => {
             try {
-              let {manifestJsonContent} = await pwaAssetGenerator.generateImages(pwaIconPath, join(staticPath, 'icon'), {log: false});
+              let {manifestJsonContent} = await pwaAssetGenerator.generateImages(pwaIconPath, join(staticPath, 'icon'), {log: false, background: (pwaOpts.icon_background || pwaOpts.background_color || '#ffffff')});
 
               if(Array.isArray(manifestJsonContent)){
                 const pwaStaticUrl = static.replace(/[\\\/]+$/);
@@ -292,7 +293,7 @@ function start(port = 3000, pageHandler) {
     (async function(){
       if(pwaAssetGenerator && pwaIconPath){
         try {
-          let {manifestJsonContent} = await pwaAssetGenerator.generateImages(pwaIconPath, join(staticPath, 'icon'), {log: false});
+          let {manifestJsonContent} = await pwaAssetGenerator.generateImages(pwaIconPath, join(staticPath, 'icon'), {log: false, background: (pwaOpts.icon_background || pwaOpts.background_color || '#ffffff')});
 
           if(Array.isArray(manifestJsonContent)){
             const pwaStaticUrl = static.replace(/[\\\/]+$/);
