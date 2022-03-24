@@ -3,6 +3,6 @@
 .github/
 build.js
 test.js
-views/
+views/index.html
 public/
 index.js

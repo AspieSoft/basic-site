@@ -1,6 +1,5 @@
 # Todo List
 
-- Add optional auto PWA setup (also auto generate icon)
 - Add optional auto minify for public js and css files
 - Add automatic support for compiling less files to css
 - Build a new view engine to use in place of regve

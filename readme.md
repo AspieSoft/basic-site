@@ -38,6 +38,7 @@ Behind the sense, this module adds in middleware for basic security and compress
 
 - Added a server.path function to safely resolve and join paths without backtracking
 - Added an option to change the memory limit of user requests
+- Added PWA Support
 
 ## Installation
 
@@ -54,6 +55,10 @@ You can use any view engine you want. By default, this module runs on [regve](ht
 
 ```js
 const server = require('basic-site');
+
+
+// optional
+server.pwa({name: 'App Name', short_name: 'App', icon: 'favicon.ico'});
 
 
 // basic setup

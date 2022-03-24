@@ -10,7 +10,9 @@ server.viewEngine({
   cache: '1D',
 });
 
-server.static('/cdn', join(__dirname, 'public'));
+server.static('/', join(__dirname, 'public'));
+
+// server.pwa({icon: 'favicon.png'});
 
 
 server.pages(function(app) {

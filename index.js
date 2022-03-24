@@ -16,6 +16,18 @@ const geoIP = require('geoip-lite');
 const isBot = require('isbot-fast');
 const forceSSL = require('express-force-ssl');
 
+const pwaAssetGenerator = requireOptional('pwa-asset-generator');
+
+
+function requireOptional(mod){
+  try {
+    return require(mod);
+  } catch(e) {
+    return undefined;
+  }
+}
+
+
 let root = (function() {
   if(require.main.filename) {
     return clean(require.main.filename.toString()).replace(/[\\\/][^\\\/]+[\\\/]?$/, '');
@@ -84,6 +96,22 @@ function setStaticPath(path = true, path2) {
     staticPath = clean(path);
   } else {
     staticPath = join(root, 'public');
+  }
+}
+
+
+let pwaOpts = undefined;
+function setPWA({name, short_name, start_url, theme_color, background_color, display, orientation, icon} = {}, otherOpts = {}){
+  pwaOpts = {
+    name: name || 'App Name',
+    short_name: short_name || 'App',
+    start_url: start_url || '/?pwa=true',
+    theme_color: theme_color || '#000000',
+    background_color: background_color || '#ffffff',
+    display: display || 'standalone',
+    orientation: orientation || 'portrait',
+    icon: icon || 'favicon.ico',
+    ...otherOpts,
   }
 }
 
@@ -217,41 +245,126 @@ function start(port = 3000, pageHandler) {
   }
 
 
+  // pwa
+  let usePwa = false;
+  let pwaIcon = undefined;
+  let pwaIconType = undefined;
+  if(pwaOpts){
+    usePwa = true;
+
+    let pwaManifest = join(staticPath, 'manifest.json');
+    let pwaWorker = join(staticPath, 'service-worker.js');
+    let pwaInit = join(staticPath, 'pwa.js');
+
+    let pwaIconPath = undefined;
+    
+    if(pwaOpts.icon){
+      pwaIcon = pwaOpts.icon;
+      pwaIconType = pwaOpts.icon_type || pwaIcon.replace(/^.*\.([\w_-]+)$/, '$1');
+      if(pwaIconType === 'ico'){
+        pwaIconType = 'x-icon';
+      }
+      delete pwaOpts.icon_type;
+
+      pwaIconPath = join(staticPath, pwaIcon);
+
+      if(pwaAssetGenerator){
+        try {
+          fs.watchFile(pwaIconPath, async () => {
+            try {
+              let {manifestJsonContent} = await pwaAssetGenerator.generateImages(pwaIconPath, join(staticPath, 'icon'), {log: false});
+
+              if(Array.isArray(manifestJsonContent)){
+                const pwaStaticUrl = static.replace(/[\\\/]+$/);
+                manifestJsonContent = manifestJsonContent.map(icon => {
+                  return {...icon, src: pwaStaticUrl + icon.src.replace(staticPath, '')};
+                });
+              }
+
+              pwaOpts.icons = manifestJsonContent;
+              fs.writeFileSync(pwaManifest, JSON.stringify(pwaOpts, null, 2));
+            } catch(e) {}
+          });
+        } catch(e) {}
+      }
+    }
+
+    (async function(){
+      if(pwaAssetGenerator && pwaIconPath){
+        try {
+          let {manifestJsonContent} = await pwaAssetGenerator.generateImages(pwaIconPath, join(staticPath, 'icon'), {log: false});
+
+          if(Array.isArray(manifestJsonContent)){
+            const pwaStaticUrl = static.replace(/[\\\/]+$/);
+            manifestJsonContent = manifestJsonContent.map(icon => {
+              return {...icon, src: pwaStaticUrl + icon.src.replace(staticPath, '')};
+            });
+          }
+
+          pwaOpts.icons = manifestJsonContent;
+          delete pwaOpts.icon;
+        } catch(e) {}
+      }
+
+      fs.writeFileSync(pwaManifest, JSON.stringify(pwaOpts, null, 2));
+    })();
+
+    if(!fs.existsSync(pwaWorker)){
+      fs.copyFileSync(join(__dirname, 'pwa/service-worker.js'), pwaWorker);
+    }
+
+    if(!fs.existsSync(pwaInit)){
+      fs.copyFileSync(join(__dirname, 'pwa/pwa.js'), pwaInit);
+    }
+  }
+
+
   // view engine
-  function buildViewEngineTemplate(views, layout) {
+  function buildViewEngineTemplate(views, layout, ext = 'html') {
     if(views && !fs.existsSync(views)) {
       try {
         fs.mkdirSync(views);
       } catch(e) {}
     }
-    if(layout && !fs.existsSync(layout)) {
-      try {
-        fs.copyFileSync(join(__dirname, 'views/layout.html'));
-      } catch(e) {}
+    if(layout) {
+      let layoutPath = join(views, layout + '.' + ext);
+      if(!fs.existsSync(layoutPath)){
+        try {
+          fs.copyFileSync(join(__dirname, 'views/layout.html'), layoutPath);
+        } catch(e) {}
+      }
     }
   }
 
   if(varType(viewEngine) === 'function') {
     viewEngine(app);
   } else {
+
+    const viewVars = {
+      static,
+      pwa: usePwa,
+      icon: pwaIcon,
+      icon_type: pwaIconType,
+    };
+
     if(varType(viewEngine) === 'object') {
       let views = viewEngine.views || viewEngine.dir || join(root, 'views');
       let type = viewEngine.type || 'html';
-      app.engine(type, regve({opts: {static}, ...viewEngine}));
+      app.engine(type, regve({opts: viewVars, ...viewEngine}));
       app.set('views', views);
       app.set('view engine', type);
-      buildViewEngineTemplate(views, viewEngine.template || viewEngine.layout || null);
+      buildViewEngineTemplate(views, viewEngine.template || viewEngine.layout || null, type);
     } else if(varType(viewEngine) === 'string') {
       if(viewEngineOpts) {
         let views = viewEngineOpts.views || viewEngineOpts.dir || join(root, 'views');
         let type = viewEngineOpts.type || 'html';
 
         if(viewEngine === 'regve') {
-          app.engine(type, regve({opts: {static}, ...viewEngineOpts}));
+          app.engine(type, regve({opts: viewVars, ...viewEngineOpts}));
           app.set('views', views);
           app.set('view engine', type);
         } else if(viewEngine === 'inputmd') {
-          app.engine(type, inputmd(views, {opts: {static}, ...viewEngineOpts}));
+          app.engine(type, inputmd(views, {opts: viewVars, ...viewEngineOpts}));
           app.set('views', views);
           app.set('view engine', type);
         } else {
@@ -260,13 +373,13 @@ function start(port = 3000, pageHandler) {
             dir: viewEngine,
             type: 'html',
             cache: '1D',
-            opts: {static},
+            opts: viewVars,
           }));
           app.set('views', viewEngine);
           app.set('view engine', 'html');
         }
 
-        buildViewEngineTemplate(views, viewEngineOpts.template || viewEngineOpts.layout || null);
+        buildViewEngineTemplate(views, viewEngineOpts.template || viewEngineOpts.layout || null, type);
       } else if(viewEngine === 'regve') {
         let views = join(root, 'views');
         app.engine('html', regve({
@@ -274,11 +387,11 @@ function start(port = 3000, pageHandler) {
           dir: views,
           type: 'html',
           cache: '1D',
-          opts: {static},
+          opts: viewVars,
         }));
         app.set('views', views);
         app.set('view engine', 'html');
-        buildViewEngineTemplate(views, 'layout');
+        buildViewEngineTemplate(views, 'layout', type);
       } else if(viewEngine === 'inputmd') {
         let views = join(root, 'views');
         app.engine('html', inputmd(views, {
@@ -286,22 +399,22 @@ function start(port = 3000, pageHandler) {
           dir: views,
           type: 'html',
           cache: '1D',
-          opts: {static},
+          opts: viewVars,
         }));
         app.set('views', views);
         app.set('view engine', 'html');
-        buildViewEngineTemplate(views, 'layout');
+        buildViewEngineTemplate(views, 'layout', type);
       } else {
         app.engine('html', regve({
           template: 'layout',
           dir: viewEngine,
           type: 'html',
           cache: '1D',
-          opts: {static},
+          opts: viewVars,
         }));
         app.set('views', viewEngine);
         app.set('view engine', 'html');
-        buildViewEngineTemplate(views, 'layout');
+        buildViewEngineTemplate(views, 'layout', type);
       }
     } else {
       let views = join(root, 'views');
@@ -310,7 +423,7 @@ function start(port = 3000, pageHandler) {
         dir: views,
         type: 'html',
         cache: '1D',
-        opts: {static},
+        opts: viewVars,
       }));
       app.set('views', views);
       app.set('view engine', 'html');
@@ -616,6 +729,7 @@ module.exports = (() => {
   exports.viewEngine = setViewEngine;
   exports.pages = setPages;
   exports.static = setStaticPath;
+  exports.pwa = setPWA;
   exports.limit = setExpressLimit;
 
   exports.extended = function(express = true, bodyParser = true){
