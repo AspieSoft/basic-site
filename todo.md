@@ -1,6 +1,5 @@
 # Todo List
 
-- Add optional auto minify for public js and css files
 - Add automatic support for compiling less files to css
 - Build a new view engine to use in place of regve
 - Allow pages to be stored on multiple files in a pages directory

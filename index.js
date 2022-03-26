@@ -17,6 +17,8 @@ const isBot = require('isbot-fast');
 const forceSSL = require('express-force-ssl');
 
 const pwaAssetGenerator = requireOptional('pwa-asset-generator');
+const terser = requireOptional('terser');
+const csso = requireOptional('csso');
 
 
 function requireOptional(mod){
@@ -109,7 +111,7 @@ function setPWA({name, short_name, start_url, theme_color, background_color, dis
     theme_color: theme_color || '#000000',
     background_color: background_color || '#ffffff',
     display: display || 'standalone',
-    orientation: orientation || 'portrait',
+    orientation: orientation || 'any',
     icon: icon || 'favicon.ico',
     icon_background: icon_background,
     ...otherOpts,
@@ -123,6 +125,18 @@ function setExpressLimit(limit){
     expressLimit = limit.toString() + 'mb';
   }else{
     expressLimit = limit;
+  }
+}
+
+
+let minifyOpts = undefined;
+function setMinifyOpts(type){
+  if(Array.isArray(type)){
+    minifyOpts = type;
+  }else if(type){
+    minifyOpts = [type];
+  }else{
+    minifyOpts = ['js', 'css'];
   }
 }
 
@@ -320,6 +334,114 @@ function start(port = 3000, pageHandler) {
   }
 
 
+  // minify
+  if(minifyOpts){
+    // minify js
+    if(minifyOpts.includes('js') && terser){
+      (async function(){
+        const opts = {
+          ecma: 2020,
+          keep_classnames: true,
+          parse: {shebang: true},
+          // ie8: true,
+          compress: {
+            ecma: 2020,
+            keep_infinity: true,
+            passes: 5,
+            top_retain: ['window', 'module', 'global', 'return', 'process'],
+            typeofs: false,
+            // ie8: true,
+          },
+          mangle: {
+            keep_classnames: true,
+            reserved: ['window', 'module', 'global', 'return', 'process'],
+            // ie8: true,
+          },
+        };
+
+        fs.readdirSync(staticPath).forEach(file => {
+          if(!file.endsWith('.js') || file.endsWith('.min.js')){
+            return;
+          }
+          const filePath = join(staticPath, file);
+          fs.readFile(filePath, async (err, data) => {
+            if(err){return;}
+            const min = await terser.minify(data.toString(), opts);
+            if(!min.err && min.code){
+              fs.writeFile(filePath.replace(/\.js$/, '.min.js'), min.code, err => {});
+            }
+          });
+        });
+
+        fs.watch(staticPath, async (event, file) => {
+          if(!file.endsWith('.js') || file.endsWith('.min.js')){
+            return;
+          }
+
+          const filePath = join(staticPath, file);
+
+          if(!fs.existsSync(filePath)){
+            fs.unlink(filePath.replace(/\.js$/, '.min.js'), err => {});
+            return;
+          }
+
+          fs.readFile(filePath, async (err, data) => {
+            if(err){return;}
+            const min = await terser.minify(data.toString(), opts);
+            if(!min.err && min.code){
+              fs.writeFile(filePath.replace(/\.js$/, '.min.js'), min.code, err => {});
+            }else if(!min.err){
+              fs.unlink(filePath.replace(/\.js$/, '.min.js'), err => {});
+            }
+          });
+        });
+      })();
+    }
+
+    // minify css
+    if(minifyOpts.includes('css') && csso){
+      (async function(){
+        fs.readdirSync(staticPath).forEach(file => {
+          if(!file.endsWith('.css') || file.endsWith('.min.css')){
+            return;
+          }
+          const filePath = join(staticPath, file);
+          fs.readFile(filePath, async (err, data) => {
+            if(err){return;}
+            const min = csso.minify(data.toString());
+            if(!min.err && min.css){
+              fs.writeFile(filePath.replace(/\.css$/, '.min.css'), min.css, err => {});
+            }
+          });
+        });
+
+        fs.watch(staticPath, async (event, file) => {
+          if(!file.endsWith('.css') || file.endsWith('.min.css')){
+            return;
+          }
+
+          const filePath = join(staticPath, file);
+
+          if(!fs.existsSync(filePath)){
+            fs.unlink(filePath.replace(/\.css$/, '.min.css'), err => {});
+            return;
+          }
+
+          fs.readFile(filePath, async (err, data) => {
+            if(err){return;}
+            const min = csso.minify(data.toString());
+            if(!min.err && min.css){
+              fs.writeFile(filePath.replace(/\.css$/, '.min.css'), min.css, err => {});
+            }else if(!min.err){
+              fs.unlink(filePath.replace(/\.css$/, '.min.css'), err => {});
+            }
+          });
+        });
+      })();
+    }
+  }
+
+
   // view engine
   function buildViewEngineTemplate(views, layout, ext = 'html') {
     if(views && !fs.existsSync(views)) {
@@ -346,6 +468,10 @@ function start(port = 3000, pageHandler) {
       pwa: usePwa,
       icon: pwaIcon,
       icon_type: pwaIconType,
+      min: {
+        js: minifyOpts?.includes('js') ? 'min.js' : 'js',
+        css: minifyOpts?.includes('css') ? 'min.css' : 'css',
+      }
     };
 
     if(varType(viewEngine) === 'object') {
@@ -732,6 +858,7 @@ module.exports = (() => {
   exports.static = setStaticPath;
   exports.pwa = setPWA;
   exports.limit = setExpressLimit;
+  exports.minify = setMinifyOpts;
 
   exports.extended = function(express = true, bodyParser = true){
     GlobalOptions.expressExtended = express;

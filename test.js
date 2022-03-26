@@ -12,7 +12,9 @@ server.viewEngine({
 
 server.static('/', join(__dirname, 'public'));
 
+
 // server.pwa({icon: 'favicon.png'});
+// server.minify();
 
 
 server.pages(function(app) {

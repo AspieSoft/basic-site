@@ -5,7 +5,7 @@
   "theme_color": "#000000",
   "background_color": "#ffffff",
   "display": "standalone",
-  "orientation": "portrait",
+  "orientation": "any",
   "icons": [
     {
       "src": "/icon/manifest-icon-192.png",

@@ -39,6 +39,7 @@ Behind the sense, this module adds in middleware for basic security and compress
 - Added a server.path function to safely resolve and join paths without backtracking
 - Added an option to change the memory limit of user requests
 - Added PWA Support
+- Added option to automatically minify js and css files from public/static directory
 
 ## Installation
 
@@ -58,8 +59,13 @@ const server = require('basic-site');
 
 
 // optional
+
+// add pwa
 server.pwa({name: 'App Name', short_name: 'App', icon: 'favicon.ico', icon_background: '#ffffff'});
 
+// auto minify public js and css files
+server.minify(['js', 'css']);
+server.minify(); // all supported files (currently .js and .css)
 
 // basic setup
 server.pages({
