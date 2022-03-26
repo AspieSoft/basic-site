@@ -469,8 +469,8 @@ function start(port = 3000, pageHandler) {
       icon: pwaIcon,
       icon_type: pwaIconType,
       min: {
-        js: minifyOpts?.includes('js') ? 'min.js' : 'js',
-        css: minifyOpts?.includes('css') ? 'min.css' : 'css',
+        js: (minifyOpts && minifyOpts.includes('js')) ? 'min.js' : 'js',
+        css: (minifyOpts && minifyOpts.includes('css')) ? 'min.css' : 'css',
       }
     };
 
