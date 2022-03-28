@@ -34,7 +34,7 @@ Behind the sense, this module adds in middleware for basic security and compress
 - Adds a /ping url that runs before the view engine (simply returns "pong!") (useful for quickly checking if the server is online).
 - You still have full access to the express module.
 
-## Whats New In Recent Updated?
+## Whats New?
 
 - Added a server.path function to safely resolve and join paths without backtracking
 - Added an option to change the memory limit of user requests
