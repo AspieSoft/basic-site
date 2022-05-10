@@ -45,6 +45,7 @@ const GlobalOptions = {
   bodyParserExtended: false,
 };
 
+
 const regve = (() => {
   try {
     return require('@aspiesoft/regve');
@@ -68,6 +69,19 @@ const inputmd = (() => {
     console.warn('\x1b[33mWarning:\x1b[0m optional dependency "inputmd" is not installed.\nYou can install it with "npm i @aspiesoft/inputmd"');
   };
 })();
+
+const turbx = (() => {
+  try {
+    return require('@aspiesoft/turbx');
+  } catch(e) {}
+  try {
+    return require('turbx');
+  } catch(e) {}
+  return function() {
+    console.warn('\x1b[33mWarning:\x1b[0m optional dependency "turbx" is not installed.\nYou can install it with "npm i turbx"');
+  };
+})();
+
 
 let server = undefined;
 
@@ -484,7 +498,12 @@ function start(port = 3000, pageHandler) {
     } else if(varType(viewEngine) === 'string') {
       if(viewEngineOpts) {
         let views = viewEngineOpts.views || viewEngineOpts.dir || join(root, 'views');
-        let type = viewEngineOpts.type || 'html';
+        let type = viewEngineOpts.type;
+        if(!type && viewEngine === 'turbx'){
+          type = 'xhtml';
+        }else{
+          type = 'html';
+        }
 
         if(viewEngine === 'regve') {
           app.engine(type, regve({opts: viewVars, ...viewEngineOpts}));
@@ -492,6 +511,10 @@ function start(port = 3000, pageHandler) {
           app.set('view engine', type);
         } else if(viewEngine === 'inputmd') {
           app.engine(type, inputmd(views, {opts: viewVars, ...viewEngineOpts}));
+          app.set('views', views);
+          app.set('view engine', type);
+        } else if(viewEngine === 'turbx') {
+          app.engine(type, turbx(views, {opts: viewVars, ...viewEngineOpts}));
           app.set('views', views);
           app.set('view engine', type);
         } else {
@@ -518,7 +541,7 @@ function start(port = 3000, pageHandler) {
         }));
         app.set('views', views);
         app.set('view engine', 'html');
-        buildViewEngineTemplate(views, 'layout', type);
+        buildViewEngineTemplate(views, 'layout', 'html');
       } else if(viewEngine === 'inputmd') {
         let views = join(root, 'views');
         app.engine('html', inputmd(views, {
@@ -530,7 +553,17 @@ function start(port = 3000, pageHandler) {
         }));
         app.set('views', views);
         app.set('view engine', 'html');
-        buildViewEngineTemplate(views, 'layout', type);
+        buildViewEngineTemplate(views, 'layout', 'html');
+      } else if(viewEngine === 'turbx') {
+        let views = join(root, 'views');
+        app.engine('xhtml', turbx(views, {
+          template: 'layout',
+          cache: '1D',
+          opts: viewVars,
+        }));
+        app.set('views', views);
+        app.set('view engine', 'xhtml');
+        buildViewEngineTemplate(views, 'layout', 'xhtml');
       } else {
         app.engine('html', regve({
           template: 'layout',
@@ -541,7 +574,7 @@ function start(port = 3000, pageHandler) {
         }));
         app.set('views', viewEngine);
         app.set('view engine', 'html');
-        buildViewEngineTemplate(views, 'layout', type);
+        buildViewEngineTemplate(views, 'layout', 'html');
       }
     } else {
       let views = join(root, 'views');

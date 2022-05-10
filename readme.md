@@ -36,6 +36,7 @@ Behind the sense, this module adds in middleware for basic security and compress
 
 ## Whats New?
 
+- Added a new view engine [turbx](https://github.com/aspiesoft/turbx)
 - Added a server.path function to safely resolve and join paths without backtracking
 - Added an option to change the memory limit of user requests
 - Added PWA Support
@@ -54,11 +55,14 @@ npm install basic-site --no-optional
 
 You can use any view engine you want. By default, this module runs on [regve](https://github.com/aspiesoft/regve) made by AspieSoft. It has a similar syntax to handlebars, but with more features and better stability. It also supports a markdown like syntax.
 
+This module now supports [turbx](https://github.com/aspiesoft/turbx) beta made by AspieSoft. It is a newer view engine than regve, and has an html like syntax. It also supports a component system you can pass variables into. To use it, simply run `server.viewEngine('turbx');` before starting **basic-site**the server.
+
 ```js
 const server = require('basic-site');
 
 
 // optional
+server.viewEngine('turbx'); // a newer view engine than regve (currently in beta)
 
 // add pwa
 server.pwa({name: 'App Name', short_name: 'App', icon: 'favicon.ico', icon_background: '#ffffff'});
