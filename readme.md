@@ -55,14 +55,15 @@ npm install basic-site --no-optional
 
 You can use any view engine you want. By default, this module runs on [regve](https://github.com/aspiesoft/regve) made by AspieSoft. It has a similar syntax to handlebars, but with more features and better stability. It also supports a markdown like syntax.
 
-This module now supports [turbx](https://github.com/aspiesoft/turbx) beta made by AspieSoft. It is a newer view engine than regve, and has an html like syntax. It also supports a component system you can pass variables into. To use it, simply run `server.viewEngine('turbx');` before starting **basic-site**the server.
+This module now supports [turbx](https://github.com/aspiesoft/turbx) beta made by AspieSoft. It is a newer view engine than regve, and has an xhtml like syntax. It also supports a component system you can pass variables into. To use it, simply run `server.viewEngine('turbx');` before starting the server.
 
 ```js
 const server = require('basic-site');
 
 
 // optional
-server.viewEngine('turbx'); // a newer view engine than regve (currently in beta)
+// turbx - a newer view engine than regve (currently in beta)
+server.viewEngine('turbx'); // note: by default, this will use .xhtml instead of .html
 
 // add pwa
 server.pwa({name: 'App Name', short_name: 'App', icon: 'favicon.ico', icon_background: '#ffffff'});
