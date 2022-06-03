@@ -669,7 +669,7 @@ function start(port = 3000, pageHandler) {
     req.url = url;
 
     res.set('Access-Control-Allow-Methods', 'GET,POST');
-    res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
+    res.setHeader('Access-Control-Allow-Headers', 'Origin,X-Requested-With,content-type,Accept');
     res.setHeader('Access-Control-Allow-Credentials', true);
 
     next();

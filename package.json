@@ -1,6 +1,6 @@
 {
   "name": "@aspiesoft/basic-site",
-  "version": "1.4.3",
+  "version": "1.4.4",
   "description": "A module that runs express with an easy setup and additional basic security for a small and simple website.",
   "author": "AspieSoft",
   "license": "MIT",
@@ -32,7 +32,7 @@
     "express-rate-limit": "^6.4.0",
     "express-timeout-handler": "^2.2.2",
     "geoip-lite": "^1.4.5",
-    "helmet": "^5.0.2",
+    "helmet": "^5.1.0",
     "isbot-fast": "^1.2.0",
     "validator": "^13.7.0"
   },
@@ -42,7 +42,7 @@
     "csso": "^5.0.3",
     "fs-extra": "^10.1.0",
     "terser": "^5.13.1",
-    "turbx": "0.0.9"
+    "turbx": "0.0.13"
   },
   "optionalPeerDependencies": {
     "@aspiesoft/inputmd": "^0.1.2"
