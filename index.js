@@ -242,7 +242,7 @@ function start(port = 3000, pageHandler) {
     if(staticPath === true) {
       staticPath = join(root, 'public');
       app.use('/', express.static(staticPath));
-      static = '/';
+      static = '';
     } else if(varType(staticPath) === 'object') {
       key = Object.keys(staticPath)[0];
 
@@ -257,7 +257,7 @@ function start(port = 3000, pageHandler) {
       static = key.replace(/[\\\/]$/, '');
     } else {
       app.use('/', express.static(staticPath));
-      static = '/';
+      static = '';
     }
 
     if(!fs.existsSync(staticPath)){
@@ -266,7 +266,7 @@ function start(port = 3000, pageHandler) {
   }else if(staticPath === undefined){
     staticPath = join(root, 'public');
     app.use('/', express.static(staticPath));
-    static = '/';
+    static = '';
 
     if(!fs.existsSync(staticPath)){
       fs.mkdirSync(staticPath);
@@ -916,6 +916,8 @@ module.exports = (() => {
 
   exports.root = root;
   exports.path = safeJoinPath;
+
+  exports.turbx = turbx;
 
   return exports;
 })();
