@@ -154,7 +154,7 @@ function setMinifyOpts(type){
   }
 }
 
-function turbxMinScriptsAfter(html){
+function turbxMinScriptsAfter(opts, html){
   if(!minifyOpts){
     return;
   }
