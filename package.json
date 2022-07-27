@@ -1,6 +1,6 @@
 {
   "name": "@aspiesoft/basic-site",
-  "version": "1.4.5",
+  "version": "1.5.0",
   "description": "A module that runs express with an easy setup and additional basic security for a small and simple website.",
   "author": "AspieSoft",
   "license": "MIT",
@@ -21,7 +21,8 @@
     "express",
     "simplified",
     "server",
-    "basic-site"
+    "basic-site",
+    "pwa"
   ],
   "dependencies": {
     "body-parser": "^1.20.0",
@@ -38,11 +39,11 @@
   },
   "optionalDependencies": {
     "@aspiesoft/regve": "^1.3.2",
-    "pwa-asset-generator": "^6.0.8",
     "csso": "^5.0.3",
     "fs-extra": "^10.1.0",
+    "pwa-asset-generator": "^6.0.8",
     "terser": "^5.13.1",
-    "turbx": "0.0.13"
+    "turbx": "^0.2.3"
   },
   "optionalPeerDependencies": {
     "@aspiesoft/inputmd": "^0.1.2"

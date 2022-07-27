@@ -154,6 +154,37 @@ function setMinifyOpts(type){
   }
 }
 
+function turbxMinScriptsAfter(html){
+  if(!minifyOpts){
+    return;
+  }
+
+  if(minifyOpts.includes('js')){
+    html = html.replace(/<script\s+(.*?)src="((?:\\[\\"]|.)*?)"(.*?)>(.*?)<\/script>/gs, function(str, args1, url, args2, cont){
+      if(url.match(/^https?:\/\//)){
+        return str;
+      }
+      return `<script ${args1} src="${url.replace(/(\.min|)\.js$/, '.min.js')}" ${args2}>${cont}</script>`;
+    });
+  }
+
+  if(minifyOpts.includes('css')){
+    html = html.replace(/<link\s+(.*?)rel="stylesheet"(.*?)href="((?:\\[\\"]|.)*?)"(.*?)\/?>/gs, function(str, args1, args2, url, args3){
+      if(url.match(/^https?:\/\//)){
+        return str;
+      }
+      return `<link ${args1} rel="stylesheet" ${args2} href="${url.replace(/(\.min|)\.css$/, '.min.css')}" ${args3} />`;
+    }).replace(/<link\s+(.*?)href="((?:\\[\\"]|.)*?)"(.*?)rel="stylesheet"(.*?)\/?>/gs, function(str, args1, url, args2, args3){
+      if(url.match(/^https?:\/\//)){
+        return str;
+      }
+      return `<link ${args1} href="${url.replace(/(\.min|)\.css$/, '.min.css')}" ${args2} rel="stylesheet" ${args3} />`;
+    });
+  }
+
+  return html;
+}
+
 
 function safeJoinPath(){
   let path = resolve(root);
@@ -514,7 +545,7 @@ function start(port = 3000, pageHandler) {
           app.set('views', views);
           app.set('view engine', type);
         } else if(viewEngine === 'turbx') {
-          app.engine(type, turbx(views, {opts: viewVars, ...viewEngineOpts}));
+          app.engine(type, turbx(views, {opts: viewVars, after: turbxMinScriptsAfter, ...viewEngineOpts}));
           app.set('views', views);
           app.set('view engine', type);
         } else {
@@ -560,6 +591,7 @@ function start(port = 3000, pageHandler) {
           template: 'layout',
           cache: '1D',
           opts: viewVars,
+          after: turbxMinScriptsAfter,
         }));
         app.set('views', views);
         app.set('view engine', 'xhtml');
