@@ -1,7 +1,8 @@
 name: Publish
 
 on:
-  workflow_dispatch:
+  release:
+    types: [created]
 
 jobs:
   test:
@@ -13,7 +14,7 @@ jobs:
           node-version: 12
       - run: npm install -g npm
       - run: npm ci
-      - run: node test.js
+      - run: node test/run.js --github
 
   publish-npm:
     needs: test
