@@ -704,6 +704,9 @@ function start(port = 3000, pageHandler) {
     res.setHeader('Access-Control-Allow-Headers', 'Origin,X-Requested-With,content-type,Accept');
     res.setHeader('Access-Control-Allow-Credentials', true);
 
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cross-Origin-Embedder-Policy', 'same-origin');
+
     next();
   });
 

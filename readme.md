@@ -34,14 +34,6 @@ Behind the sense, this module adds in middleware for basic security and compress
 - Adds a /ping url that runs before the view engine (simply returns "pong!") (useful for quickly checking if the server is online).
 - You still have full access to the express module.
 
-## Whats New?
-
-- Added a new view engine [turbx](https://github.com/aspiesoft/turbx)
-- Added a server.path function to safely resolve and join paths without backtracking
-- Added an option to change the memory limit of user requests
-- Added PWA Support
-- Added option to automatically minify js and css files from public/static directory
-
 ## Installation
 
 ```shell script
