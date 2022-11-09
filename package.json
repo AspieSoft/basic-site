@@ -1,6 +1,6 @@
 {
   "name": "@aspiesoft/basic-site",
-  "version": "1.5.4",
+  "version": "1.6.0",
   "description": "A module that runs express with an easy setup and additional basic security for a small and simple website.",
   "author": "AspieSoft",
   "license": "MIT",
@@ -10,7 +10,7 @@
     "build": "node build.js"
   },
   "engines": {
-    "node": ">=16.0.0"
+    "node": ">=18.0.0"
   },
   "repository": {
     "type": "git",
