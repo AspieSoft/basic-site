@@ -31,11 +31,15 @@ function requireOptional(mod){
 
 
 let root = (function() {
-  if(require.main.filename) {
-    return clean(require.main.filename.toString()).replace(/[\\\/][^\\\/]+[\\\/]?$/, '');
-  }
-  if(require.main.path) {
-    clean(require.main.path.toString());
+  if(process.env.PWD){
+    return clean(process.env.PWD);
+  }else if(require.main){
+    if(require.main.filename) {
+      return clean(require.main.filename.toString()).replace(/[\\\/][^\\\/]+[\\\/]?$/, '');
+    }
+    if(require.main.path) {
+      return clean(require.main.path.toString());
+    }
   }
   return join(__dirname).toString().replace(/[\/\\]node_modules[\/\\][^\\\/]+[\\\/]?$/, '');
 })();
@@ -267,15 +271,15 @@ function start(port = 3000, pageHandler) {
 
 
   // static path
-  let static = undefined;
+  let staticUrl = undefined;
 
   if(staticPath) {
     if(staticPath === true) {
       staticPath = join(root, 'public');
       app.use('/', express.static(staticPath));
-      static = '';
+      staticUrl = '';
     } else if(varType(staticPath) === 'object') {
-      key = Object.keys(staticPath)[0];
+      let key = Object.keys(staticPath)[0];
 
       if(!staticPath[key].startsWith(root)){
         staticPath = join(root, staticPath[key]);
@@ -285,10 +289,10 @@ function start(port = 3000, pageHandler) {
       
       app.use(key, express.static(staticPath));
 
-      static = key.replace(/[\\\/]$/, '');
+      staticUrl = key.replace(/[\\\/]$/, '');
     } else {
       app.use('/', express.static(staticPath));
-      static = '';
+      staticUrl = '';
     }
 
     if(!fs.existsSync(staticPath)){
@@ -297,7 +301,7 @@ function start(port = 3000, pageHandler) {
   }else if(staticPath === undefined){
     staticPath = join(root, 'public');
     app.use('/', express.static(staticPath));
-    static = '';
+    staticUrl = '';
 
     if(!fs.existsSync(staticPath)){
       fs.mkdirSync(staticPath);
@@ -335,7 +339,7 @@ function start(port = 3000, pageHandler) {
               let {manifestJsonContent} = await pwaAssetGenerator.generateImages(pwaIconPath, join(staticPath, 'icon'), {log: false, background: (pwaOpts.icon_background || pwaOpts.background_color || '#ffffff')});
 
               if(Array.isArray(manifestJsonContent)){
-                const pwaStaticUrl = static.replace(/[\\\/]+$/);
+                const pwaStaticUrl = staticUrl.replace(/[\\\/]+$/);
                 manifestJsonContent = manifestJsonContent.map(icon => {
                   return {...icon, src: pwaStaticUrl + icon.src.replace(staticPath, '')};
                 });
@@ -355,7 +359,7 @@ function start(port = 3000, pageHandler) {
           let {manifestJsonContent} = await pwaAssetGenerator.generateImages(pwaIconPath, join(staticPath, 'icon'), {log: false, background: (pwaOpts.icon_background || pwaOpts.background_color || '#ffffff')});
 
           if(Array.isArray(manifestJsonContent)){
-            const pwaStaticUrl = static.replace(/[\\\/]+$/);
+            const pwaStaticUrl = staticUrl.replace(/[\\\/]+$/);
             manifestJsonContent = manifestJsonContent.map(icon => {
               return {...icon, src: pwaStaticUrl + icon.src.replace(staticPath, '')};
             });
@@ -509,7 +513,7 @@ function start(port = 3000, pageHandler) {
   } else {
 
     const viewVars = {
-      static,
+      static: staticUrl,
       pwa: usePwa,
       icon: pwaIcon,
       icon_type: pwaIconType,
@@ -645,7 +649,7 @@ function start(port = 3000, pageHandler) {
     req.params = clean(req.params);
     req.data = clean(req.data);
 
-    req.static = static;
+    req.static = staticUrl;
     req.limit = expressLimit;
 
     let host = clean(req.hostname || req.headers.host || '');
@@ -700,12 +704,15 @@ function start(port = 3000, pageHandler) {
     }
     req.url = url;
 
-    res.set('Access-Control-Allow-Methods', 'GET,POST');
+    res.set('Access-Control-Allow-Methods', 'GET,POST,HEAD');
     res.setHeader('Access-Control-Allow-Headers', 'Origin,X-Requested-With,content-type,Accept');
     res.setHeader('Access-Control-Allow-Credentials', true);
 
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Cross-Origin-Embedder-Policy', 'same-origin');
+
+    //todo: lockup 'X-Frame-Options' header
+    //todo: lockup 'X-Powered-By' header (may add an optional function to set this header)
 
     next();
   });

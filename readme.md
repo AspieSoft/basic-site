@@ -8,7 +8,7 @@
 ![npm](https://img.shields.io/npm/dw/basic-site)
 ![npm](https://img.shields.io/npm/dm/basic-site)
 
-[![paypal](https://img.shields.io/badge/buy%20me%20a%20coffee-paypal-blue)](https://buymeacoffee.aspiesoft.com/)
+[![donation link](https://img.shields.io/badge/buy%20me%20a%20coffee-paypal-blue)](https://paypal.me/shaynejrtaylor?country.x=US&locale.x=en_US)
 
 A module that runs express with an easy setup and additional basic security for a small and simple website.
 
