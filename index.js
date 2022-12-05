@@ -29,11 +29,11 @@ function requireOptional(mod){
   }
 }
 
+const sleep = (waitTimeInMs) => new Promise(resolve => setTimeout(resolve, waitTimeInMs));
+
 
 let root = (function() {
-  if(process.env.PWD){
-    return clean(process.env.PWD);
-  }else if(require.main){
+  if(require.main && typeof require.main === 'object'){
     if(require.main.filename) {
       return clean(require.main.filename.toString()).replace(/[\\\/][^\\\/]+[\\\/]?$/, '');
     }
@@ -41,6 +41,11 @@ let root = (function() {
       return clean(require.main.path.toString());
     }
   }
+
+  if(process.env.PWD){
+    return clean(process.env.PWD);
+  }
+
   return join(__dirname).toString().replace(/[\/\\]node_modules[\/\\][^\\\/]+[\\\/]?$/, '');
 })();
 
@@ -50,7 +55,7 @@ const GlobalOptions = {
 };
 
 
-const regve = (() => {
+regve = (() => {
   try {
     return require('@aspiesoft/regve');
   } catch(e) {}
@@ -62,19 +67,7 @@ const regve = (() => {
   };
 })();
 
-const inputmd = (() => {
-  try {
-    return require('@aspiesoft/inputmd');
-  } catch(e) {}
-  try {
-    return require('inputmd');
-  } catch(e) {}
-  return function() {
-    console.warn('\x1b[33mWarning:\x1b[0m optional dependency "inputmd" is not installed.\nYou can install it with "npm i @aspiesoft/inputmd"');
-  };
-})();
-
-const turbx = (() => {
+turbx = (() => {
   try {
     return require('@aspiesoft/turbx');
   } catch(e) {}
@@ -85,6 +78,122 @@ const turbx = (() => {
     console.warn('\x1b[33mWarning:\x1b[0m optional dependency "turbx" is not installed.\nYou can install it with "npm i turbx"');
   };
 })();
+
+
+const ViewEngines = {
+  turbx: {
+    engine: (function(){
+      try {
+        return require('@aspiesoft/turbx');
+      } catch(e) {}
+
+      try {
+        return require('turbx');
+      } catch(e) {}
+
+      return '\x1b[33mWarning:\x1b[0m optional dependency "turbx" is not installed.\nYou can install it with "npm i turbx"';
+    })(),
+
+    handler: function(app, viewVars, viewEngineOpts){
+      let path = join(root, 'views');
+      let ext = 'xhtml';
+
+      if(viewEngineOpts){
+        path = viewEngineOpts.views || viewEngineOpts.dir || viewEngineOpts.path || path;
+        ext = viewEngineOpts.type || viewEngineOpts.ext || ext;
+        app.engine(ext, this.engine(path, {opts: viewVars, after: turbxMinScriptsAfter, ...viewEngineOpts}));
+      }else{
+        app.engine(ext, this.engine(path, {
+          template: 'layout',
+          cache: '1D',
+          opts: viewVars,
+          after: turbxMinScriptsAfter,
+        }));
+      }
+
+      app.set('views', path);
+      app.set('view engine', ext);
+
+      return {path, ext};
+    }
+  },
+
+  regve: {
+    engine: (function(){
+      try {
+        return require('@aspiesoft/regve');
+      } catch(e) {}
+
+      try {
+        return require('regve');
+      } catch(e) {}
+
+      return '\x1b[33mWarning:\x1b[0m optional dependency "regve" is not installed.\nYou can install it with "npm i @aspiesoft/regve"';
+    })(),
+
+    handler: function(app, viewVars, viewEngineOpts){
+      let path = join(root, 'views');
+      let ext = 'html';
+
+      if(viewEngineOpts){
+        path = viewEngineOpts.views || viewEngineOpts.dir || viewEngineOpts.path || path;
+        ext = viewEngineOpts.type || viewEngineOpts.ext || ext;
+        app.engine(ext, this.engine({opts: viewVars, ...viewEngineOpts}));
+      }else{
+        app.engine(ext, this.engine({
+          template: 'layout',
+          dir: path,
+          type: 'html',
+          cache: '1D',
+          opts: viewVars,
+        }));
+      }
+
+      app.set('views', path);
+      app.set('view engine', ext);
+
+      return {path, ext};
+    }
+  },
+
+  inputmd: {
+    engine: (function(){
+      try {
+        return require('@aspiesoft/inputmd');
+      } catch(e) {}
+
+      try {
+        return require('inputmd');
+      } catch(e) {}
+
+      return '\x1b[33mWarning:\x1b[0m optional dependency "inputmd" is not installed.\nYou can install it with "npm i @aspiesoft/inputmd"';
+    })(),
+
+    handler: function(app, viewVars, viewEngineOpts){
+      let path = join(root, 'views');
+      let ext = 'html';
+
+      if(viewEngineOpts){
+        path = viewEngineOpts.views || viewEngineOpts.dir || viewEngineOpts.path || path;
+        ext = viewEngineOpts.type || viewEngineOpts.ext || ext;
+        app.engine(ext, this.engine(path, {opts: viewVars, ...viewEngineOpts}));
+      }else{
+        app.engine(ext, this.engine(path, {
+          template: 'layout',
+          dir: path,
+          type: 'html',
+          cache: '1D',
+          opts: viewVars,
+        }));
+      }
+
+      app.set('views', path);
+      app.set('view engine', ext);
+
+      return {path, ext};
+    }
+  },
+};
 
 
 let server = undefined;
@@ -213,15 +322,12 @@ function safeJoinPath(){
 
 
 function start(port = 3000, pageHandler) {
+  let ServerReady = false;
 
   if((varType(port) === 'string' && Number(port)) || ['function', 'object'].includes(varType(port))) {
     let rPort = pageHandler || 3000;
     pageHandler = port;
     port = rPort;
-  }
-
-  if(['function', 'object', 'string'].includes(varType(pageHandler))) {
-    setPages(pageHandler);
   }
 
   const app = express();
@@ -232,6 +338,91 @@ function start(port = 3000, pageHandler) {
     contentSecurityPolicy: false,
   }));
 
+
+  const delayedIP = {};
+
+  app.use(async (req, res, next) => {
+    if(ServerReady){
+      next();
+      return;
+    }
+
+    let now = Date.now();
+    while(!ServerReady && Date.now() - now < 5000){ // 5 seconds
+      await sleep(10);
+    }
+
+    if(!ServerReady){
+      let ip = clean(clean(req.ip).toString()) || '*';
+      if(!delayedIP[ip]){
+        delayedIP[ip] = 0;
+      }
+      delayedIP[ip]++;
+
+      let delay = 10;
+      if(delayedIP[ip] === 1){
+        delay = 5;
+      }else if(delayedIP[ip] > 3){
+        delay = 600;
+      }
+
+      res.setHeader('Retry-After', delay);
+      res.setHeader('Refresh', delay);
+
+      if(delay > 30){
+        res.status(503).send(`<h1>Error: 503 (Service Unavailable)</h1><h2>The server is still starting up. Please wait and try again later.</h2>`).end();
+      }else{
+        res.status(503).send(`<h1>Error: 503 (Service Unavailable)</h1><h2>The server is still starting up. Please wait at least ${delay} seconds and try again.</h2>`).end();
+      }
+      return;
+    }
+
+    next();
+  });
+
+
+  // init server listener
+  const usePort = normalizePort(clean(process.env.PORT || port || 3000));
+  server = http.createServer(app);
+
+  server.on('error', function(error) {
+    if(error.syscall !== 'listen') {
+      throw error;
+    }
+    let bind = varType(usePort) === 'string'
+      ? 'Pipe ' + usePort
+      : 'Port ' + usePort;
+    switch(error.code) {
+      case 'EACCES':
+        console.error(bind + ' requires elevated privileges');
+        process.exit(1);
+      case 'EADDRINUSE':
+        console.error(bind + ' is already in use');
+        process.exit(1);
+      default:
+        throw error;
+    }
+  });
+
+  server.on('listening', function() {
+    let addr = server.address();
+    let bind = varType(addr) === 'string'
+      ? '\x1b[33mpipe ' + addr
+      : '\x1b[36mport ' + addr.port;
+    console.log('\x1b[32mListening On', bind, '\x1b[0m');
+  });
+
+  server.listen(usePort || 3000);
+  server.setTimeout(5250);
+
+
+  // setup page handler
+  if(['function', 'object', 'string'].includes(varType(pageHandler))) {
+    setPages(pageHandler);
+  }
+
+
+  // setup timeout handler
   app.use(timeout.handler({
     timeout: 5000,
     onTimeout: function(req, res) {
@@ -241,6 +432,8 @@ function start(port = 3000, pageHandler) {
     },
   }));
 
+
+  // setup
   app.use('/ping', function(req, res) {
     res.status(200).send('pong!').end();
   });
@@ -511,7 +704,6 @@ function start(port = 3000, pageHandler) {
   if(varType(viewEngine) === 'function') {
     viewEngine(app);
   } else {
-
     const viewVars = {
       static: staticUrl,
       pwa: usePwa,
@@ -524,105 +716,76 @@ function start(port = 3000, pageHandler) {
     };
 
     if(varType(viewEngine) === 'object') {
-      let views = viewEngine.views || viewEngine.dir || join(root, 'views');
-      let type = viewEngine.type || 'html';
-      app.engine(type, regve({opts: viewVars, ...viewEngine}));
-      app.set('views', views);
-      app.set('view engine', type);
-      buildViewEngineTemplate(views, viewEngine.template || viewEngine.layout || null, type);
+      let viewData = null;
+      let engines = Object.keys(ViewEngines);
+      for(let i = 0; i < engines.length; i++){
+        if(ViewEngines[engines[i]].engine && typeof ViewEngines[engines[i]].engine !== 'string'){
+          viewData = ViewEngines[engines[i]].handler.call(ViewEngines[engines[i]], app, viewVars, viewEngine);
+          break;
+        }
+      }
+
+      if(viewData){
+        buildViewEngineTemplate(viewData.path, viewEngine.template || viewEngine.layout || null, viewData.ext);
+      }
     } else if(varType(viewEngine) === 'string') {
       if(viewEngineOpts) {
-        let views = viewEngineOpts.views || viewEngineOpts.dir || join(root, 'views');
-        let type = viewEngineOpts.type;
-        if(!type && viewEngine === 'turbx'){
-          type = 'xhtml';
+
+        let viewData = null;
+        if(ViewEngines[viewEngine]){
+          if(typeof ViewEngines[viewEngine].engine === 'string'){
+            console.warn(ViewEngines[viewEngine].engine)
+          }else{
+            viewData = ViewEngines[viewEngine].handler.call(ViewEngines[viewEngine], app, viewVars, viewEngineOpts);
+          }
         }else{
-          type = 'html';
+          let engines = Object.keys(ViewEngines);
+          for(let i = 0; i < engines.length; i++){
+            if(ViewEngines[engines[i]].engine && typeof ViewEngines[engines[i]].engine !== 'string'){
+              viewData = ViewEngines[engines[i]].handler.call(ViewEngines[engines[i]], app, viewVars, viewEngineOpts);
+              break;
+            }
+          }
         }
 
-        if(viewEngine === 'regve') {
-          app.engine(type, regve({opts: viewVars, ...viewEngineOpts}));
-          app.set('views', views);
-          app.set('view engine', type);
-        } else if(viewEngine === 'inputmd') {
-          app.engine(type, inputmd(views, {opts: viewVars, ...viewEngineOpts}));
-          app.set('views', views);
-          app.set('view engine', type);
-        } else if(viewEngine === 'turbx') {
-          app.engine(type, turbx(views, {opts: viewVars, after: turbxMinScriptsAfter, ...viewEngineOpts}));
-          app.set('views', views);
-          app.set('view engine', type);
-        } else {
-          app.engine('html', regve({
-            template: 'layout',
-            dir: viewEngine,
-            type: 'html',
-            cache: '1D',
-            opts: viewVars,
-          }));
-          app.set('views', viewEngine);
-          app.set('view engine', 'html');
+        if(viewData){
+          buildViewEngineTemplate(viewData.path, viewEngineOpts.template || viewEngineOpts.layout || null, viewData.ext);
         }
-
-        buildViewEngineTemplate(views, viewEngineOpts.template || viewEngineOpts.layout || null, type);
-      } else if(viewEngine === 'regve') {
-        let views = join(root, 'views');
-        app.engine('html', regve({
-          template: 'layout',
-          dir: views,
-          type: 'html',
-          cache: '1D',
-          opts: viewVars,
-        }));
-        app.set('views', views);
-        app.set('view engine', 'html');
-        buildViewEngineTemplate(views, 'layout', 'html');
-      } else if(viewEngine === 'inputmd') {
-        let views = join(root, 'views');
-        app.engine('html', inputmd(views, {
-          template: 'layout',
-          dir: views,
-          type: 'html',
-          cache: '1D',
-          opts: viewVars,
-        }));
-        app.set('views', views);
-        app.set('view engine', 'html');
-        buildViewEngineTemplate(views, 'layout', 'html');
-      } else if(viewEngine === 'turbx') {
-        let views = join(root, 'views');
-        app.engine('xhtml', turbx(views, {
-          template: 'layout',
-          cache: '1D',
-          opts: viewVars,
-          after: turbxMinScriptsAfter,
-        }));
-        app.set('views', views);
-        app.set('view engine', 'xhtml');
-        buildViewEngineTemplate(views, 'layout', 'xhtml');
       } else {
-        app.engine('html', regve({
-          template: 'layout',
-          dir: viewEngine,
-          type: 'html',
-          cache: '1D',
-          opts: viewVars,
-        }));
-        app.set('views', viewEngine);
-        app.set('view engine', 'html');
-        buildViewEngineTemplate(views, 'layout', 'html');
+        let viewData = null;
+        if(ViewEngines[viewEngine]){
+          if(typeof ViewEngines[viewEngine].engine === 'string'){
+            console.warn(ViewEngines[viewEngine].engine)
+          }else{
+            viewData = ViewEngines[viewEngine].handler.call(ViewEngines[viewEngine], app, viewVars, viewEngineOpts);
+          }
+        }else{
+          let engines = Object.keys(ViewEngines);
+          for(let i = 0; i < engines.length; i++){
+            if(ViewEngines[engines[i]].engine && typeof ViewEngines[engines[i]].engine !== 'string'){
+              viewData = ViewEngines[engines[i]].handler.call(ViewEngines[engines[i]], app, viewVars, viewEngineOpts);
+              break;
+            }
+          }
+        }
+
+        if(viewData){
+          buildViewEngineTemplate(viewData.path, 'layout', viewData.ext);
+        }
       }
-    } else {
-      let views = join(root, 'views');
-      app.engine('html', regve({
-        template: 'layout',
-        dir: views,
-        type: 'html',
-        cache: '1D',
-        opts: viewVars,
-      }));
-      app.set('views', views);
-      app.set('view engine', 'html');
+    } else if(viewEngine !== null) {
+      let viewData = null;
+      let engines = Object.keys(ViewEngines);
+      for(let i = 0; i < engines.length; i++){
+        if(ViewEngines[engines[i]].engine && typeof ViewEngines[engines[i]].engine !== 'string'){
+          viewData = ViewEngines[engines[i]].handler.call(ViewEngines[engines[i]], app, viewVars);
+          break;
+        }
+      }
+
+      if(viewData){
+        buildViewEngineTemplate(viewData.path, 'layout', viewData.ext);
+      }
     }
   }
 
@@ -758,37 +921,14 @@ function start(port = 3000, pageHandler) {
     res.status(404).send('<h1>Error: 404 (Not Found)</h1><h2>Page Not Found</h2>').end();
   });
 
-  const usePort = normalizePort(clean(process.env.PORT || port || 3000));
-  server = http.createServer(app);
+  setTimeout(function(){
+    ServerReady = true;
+    console.log('\x1b[32mServer Ready!', '\x1b[0m');
 
-  server.on('error', function(error) {
-    if(error.syscall !== 'listen') {
-      throw error;
-    }
-    let bind = varType(usePort) === 'string'
-      ? 'Pipe ' + usePort
-      : 'Port ' + usePort;
-    switch(error.code) {
-      case 'EACCES':
-        console.error(bind + ' requires elevated privileges');
-        process.exit(1);
-      case 'EADDRINUSE':
-        console.error(bind + ' is already in use');
-        process.exit(1);
-      default:
-        throw error;
-    }
-  });
-
-  server.on('listening', function() {
-    let addr = server.address();
-    let bind = varType(addr) === 'string'
-      ? '\x1b[32mpipe ' + addr
-      : '\x1b[32mport ' + addr.port;
-    console.log('Listening On', bind, '\x1b[0m');
-  });
-
-  server.listen(usePort || 3000);
+    Object.keys(delayedIP).forEach(function(ip){
+      delete delayedIP[ip];
+    });
+  }, 100);
 
   return app;
 }
