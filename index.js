@@ -101,13 +101,25 @@ const ViewEngines = {
       if(viewEngineOpts){
         path = viewEngineOpts.views || viewEngineOpts.dir || viewEngineOpts.path || path;
         ext = viewEngineOpts.type || viewEngineOpts.ext || ext;
-        app.engine(ext, this.engine(path, {opts: viewVars, after: turbxMinScriptsAfter, ...viewEngineOpts}));
+        app.engine(ext, this.engine(path, {
+          opts: viewVars,
+          public: staticPath,
+          root: root,
+          views: path,
+          ext: ext,
+          /* after: turbxMinScriptsAfter, */
+          ...viewEngineOpts
+        }));
       }else{
         app.engine(ext, this.engine(path, {
-          template: 'layout',
+          root: root,
+          layout: 'layout',
+          views: path,
+          ext: ext,
+          public: staticPath,
           cache: '1D',
           opts: viewVars,
-          after: turbxMinScriptsAfter,
+          /* after: turbxMinScriptsAfter, */
         }));
       }
 
