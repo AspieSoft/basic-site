@@ -1,7 +1,7 @@
+.gitignore
 node_modules
 .history
 .vscode
 .idea
 .git
 .svn
-public/icon

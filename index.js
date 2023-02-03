@@ -1,5 +1,3 @@
-// In God We Trust
-
 const {join, resolve} = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
@@ -7,19 +5,18 @@ const http = require('http');
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const bodyParser = require('body-parser');
-const compression = require('compression');
 const helmet = require('helmet');
 const timeout = require('express-timeout-handler');
-const rateLimit = require('express-rate-limit');
 const validator = require('validator');
 const geoIP = require('geoip-lite');
 const isBot = require('isbot-fast');
 const forceSSL = require('express-force-ssl');
+const deviceRateLimit = require('@aspiesoft/express-device-rate-limit');
 
+const turbx = requireOptional('@aspiesoft/turbx');
 const pwaAssetGenerator = requireOptional('pwa-asset-generator');
 const terser = requireOptional('terser');
 const csso = requireOptional('csso');
-
 
 function requireOptional(mod){
   try {
@@ -31,8 +28,11 @@ function requireOptional(mod){
 
 const sleep = (waitTimeInMs) => new Promise(resolve => setTimeout(resolve, waitTimeInMs));
 
-
 let root = (function() {
+  if(process.env.PWD){
+    return clean(process.env.PWD);
+  }
+
   if(require.main && typeof require.main === 'object'){
     if(require.main.filename) {
       return clean(require.main.filename.toString()).replace(/[\\\/][^\\\/]+[\\\/]?$/, '');
@@ -42,274 +42,8 @@ let root = (function() {
     }
   }
 
-  if(process.env.PWD){
-    return clean(process.env.PWD);
-  }
-
   return join(__dirname).toString().replace(/[\/\\]node_modules[\/\\][^\\\/]+[\\\/]?$/, '');
 })();
-
-const GlobalOptions = {
-  expressExtended: false,
-  bodyParserExtended: false,
-};
-
-
-regve = (() => {
-  try {
-    return require('@aspiesoft/regve');
-  } catch(e) {}
-  try {
-    return require('regve');
-  } catch(e) {}
-  return function() {
-    console.warn('\x1b[33mWarning:\x1b[0m optional dependency "regve" is not installed.\nYou can install it with "npm i @aspiesoft/regve"');
-  };
-})();
-
-turbx = (() => {
-  try {
-    return require('@aspiesoft/turbx');
-  } catch(e) {}
-  try {
-    return require('turbx');
-  } catch(e) {}
-  return function() {
-    console.warn('\x1b[33mWarning:\x1b[0m optional dependency "turbx" is not installed.\nYou can install it with "npm i turbx"');
-  };
-})();
-
-
-const ViewEngines = {
-  turbx: {
-    engine: (function(){
-      try {
-        return require('@aspiesoft/turbx');
-      } catch(e) {}
-
-      try {
-        return require('turbx');
-      } catch(e) {}
-
-      return '\x1b[33mWarning:\x1b[0m optional dependency "turbx" is not installed.\nYou can install it with "npm i turbx"';
-    })(),
-
-    handler: function(app, viewVars, viewEngineOpts){
-      let path = join(root, 'views');
-      let ext = 'xhtml';
-
-      if(viewEngineOpts){
-        path = viewEngineOpts.views || viewEngineOpts.dir || viewEngineOpts.path || path;
-        ext = viewEngineOpts.type || viewEngineOpts.ext || ext;
-        app.engine(ext, this.engine(path, {
-          opts: viewVars,
-          public: staticPath,
-          root: root,
-          views: path,
-          ext: ext,
-          /* after: turbxMinScriptsAfter, */
-          ...viewEngineOpts
-        }));
-      }else{
-        app.engine(ext, this.engine(path, {
-          root: root,
-          layout: 'layout',
-          views: path,
-          ext: ext,
-          public: staticPath,
-          cache: '1D',
-          opts: viewVars,
-          /* after: turbxMinScriptsAfter, */
-        }));
-      }
-
-      app.set('views', path);
-      app.set('view engine', ext);
-
-      return {path, ext};
-    }
-  },
-
-  regve: {
-    engine: (function(){
-      try {
-        return require('@aspiesoft/regve');
-      } catch(e) {}
-
-      try {
-        return require('regve');
-      } catch(e) {}
-
-      return '\x1b[33mWarning:\x1b[0m optional dependency "regve" is not installed.\nYou can install it with "npm i @aspiesoft/regve"';
-    })(),
-
-    handler: function(app, viewVars, viewEngineOpts){
-      let path = join(root, 'views');
-      let ext = 'html';
-
-      if(viewEngineOpts){
-        path = viewEngineOpts.views || viewEngineOpts.dir || viewEngineOpts.path || path;
-        ext = viewEngineOpts.type || viewEngineOpts.ext || ext;
-        app.engine(ext, this.engine({opts: viewVars, ...viewEngineOpts}));
-      }else{
-        app.engine(ext, this.engine({
-          template: 'layout',
-          dir: path,
-          type: 'html',
-          cache: '1D',
-          opts: viewVars,
-        }));
-      }
-
-      app.set('views', path);
-      app.set('view engine', ext);
-
-      return {path, ext};
-    }
-  },
-
-  inputmd: {
-    engine: (function(){
-      try {
-        return require('@aspiesoft/inputmd');
-      } catch(e) {}
-
-      try {
-        return require('inputmd');
-      } catch(e) {}
-
-      return '\x1b[33mWarning:\x1b[0m optional dependency "inputmd" is not installed.\nYou can install it with "npm i @aspiesoft/inputmd"';
-    })(),
-
-    handler: function(app, viewVars, viewEngineOpts){
-      let path = join(root, 'views');
-      let ext = 'html';
-
-      if(viewEngineOpts){
-        path = viewEngineOpts.views || viewEngineOpts.dir || viewEngineOpts.path || path;
-        ext = viewEngineOpts.type || viewEngineOpts.ext || ext;
-        app.engine(ext, this.engine(path, {opts: viewVars, ...viewEngineOpts}));
-      }else{
-        app.engine(ext, this.engine(path, {
-          template: 'layout',
-          dir: path,
-          type: 'html',
-          cache: '1D',
-          opts: viewVars,
-        }));
-      }
-
-      app.set('views', path);
-      app.set('view engine', ext);
-
-      return {path, ext};
-    }
-  },
-};
-
-
-let server = undefined;
-
-let viewEngine = undefined;
-let viewEngineOpts = undefined;
-function setViewEngine(callback, opts) {
-  viewEngine = callback;
-  if(varType(opts) === 'object') {
-    viewEngineOpts = opts;
-  }
-}
-
-let pages = undefined;
-function setPages(handler) {
-  if(varType(handler) === 'string') {
-    pages = require(handler);
-  } else {
-    pages = handler;
-  }
-}
-
-let staticPath = undefined;
-function setStaticPath(path = true, path2) {
-  if(varType(path) === 'string' && varType(path2) === 'string') {
-    staticPath = {};
-    staticPath[clean(path)] = clean(path2);
-  } else if(path) {
-    staticPath = clean(path);
-  } else {
-    staticPath = join(root, 'public');
-  }
-}
-
-
-let pwaOpts = undefined;
-function setPWA({name, short_name, start_url, theme_color, background_color, display, orientation, icon, icon_background} = {}, otherOpts = {}){
-  pwaOpts = {
-    name: name || 'App Name',
-    short_name: short_name || 'App',
-    start_url: start_url || '/?pwa=true',
-    theme_color: theme_color || '#000000',
-    background_color: background_color || '#ffffff',
-    display: display || 'standalone',
-    orientation: orientation || 'any',
-    icon: icon || 'favicon.ico',
-    icon_background: icon_background,
-    ...otherOpts,
-  }
-}
-
-
-let expressLimit = '1mb';
-function setExpressLimit(limit){
-  if(typeof limit === 'number'){
-    expressLimit = limit.toString() + 'mb';
-  }else{
-    expressLimit = limit;
-  }
-}
-
-
-let minifyOpts = undefined;
-function setMinifyOpts(type){
-  if(Array.isArray(type)){
-    minifyOpts = type;
-  }else if(type){
-    minifyOpts = [type];
-  }else{
-    minifyOpts = ['js', 'css'];
-  }
-}
-
-function turbxMinScriptsAfter(opts, html){
-  if(!minifyOpts){
-    return;
-  }
-
-  if(minifyOpts.includes('js')){
-    html = html.replace(/<script\s+(.*?)src="((?:\\[\\"]|.)*?)"(.*?)>(.*?)<\/script>/gs, function(str, args1, url, args2, cont){
-      if(url.match(/^https?:\/\//)){
-        return str;
-      }
-      return `<script ${args1} src="${url.replace(/(\.min|)\.js$/, '.min.js')}" ${args2}>${cont}</script>`;
-    });
-  }
-
-  if(minifyOpts.includes('css')){
-    html = html.replace(/<link\s+(.*?)rel="stylesheet"(.*?)href="((?:\\[\\"]|.)*?)"(.*?)\/?>/gs, function(str, args1, args2, url, args3){
-      if(url.match(/^https?:\/\//)){
-        return str;
-      }
-      return `<link ${args1} rel="stylesheet" ${args2} href="${url.replace(/(\.min|)\.css$/, '.min.css')}" ${args3} />`;
-    }).replace(/<link\s+(.*?)href="((?:\\[\\"]|.)*?)"(.*?)rel="stylesheet"(.*?)\/?>/gs, function(str, args1, url, args2, args3){
-      if(url.match(/^https?:\/\//)){
-        return str;
-      }
-      return `<link ${args1} href="${url.replace(/(\.min|)\.css$/, '.min.css')}" ${args2} rel="stylesheet" ${args3} />`;
-    });
-  }
-
-  return html;
-}
-
 
 function safeJoinPath(){
   let path = resolve(root);
@@ -333,38 +67,162 @@ function safeJoinPath(){
 }
 
 
-function start(port = 3000, pageHandler) {
-  let ServerReady = false;
+let pages = undefined;
+function setPages(handler) {
+  if(varType(handler) === 'string') {
+    pages = require(handler);
+  } else {
+    pages = handler;
+  }
+}
 
-  if((varType(port) === 'string' && Number(port)) || ['function', 'object'].includes(varType(port))) {
-    let rPort = pageHandler || 3000;
-    pageHandler = port;
-    port = rPort;
+let rateLimitOpts = {
+  // the number of requests that can be made by a user within a given time
+  // this is multiplied by the value of the defEffect option
+  limit: 100,
+
+  // the amount of time before reseting the recording of a users request rate
+  // s: seconds, m: minutes, h: hours, D: days, M: months, Y: years
+  time: '1m',
+
+  // the amount of time to kick a user who goes above the rate limit
+  kickTime: '1h',
+
+  // the default score to increase a user request rate by
+  defEffect: 5,
+
+  // the minimum score to increase a user request rate by
+  minEffect: 1,
+
+  // the maximum score to increase a user request rate by
+  maxEffect: this.limit * this.defEffect / 20,
+
+  // how strict should a score increase be
+  // the amount a score is increased by will be multiplied by this number
+  strict: 1,
+
+  // how passive should a score decrease be
+  // the amount a score is decreased by will be multiplied by this number
+  passive: 1,
+
+
+  // optional: handle a rate limit error in any way you want
+  err: function(req, res, next){
+    // by default this status and message is sent if a users request rate goes past the limit
+    res.status(429).send('<h1>Error 429</h1><h2>Too Many Requests</h2>').end();
+  },
+
+
+  // optional: geo location options
+  // you can increase the effect (rate score) of a user based on location
+  geo: {
+
+    // how strict should a score increase be
+    // the amount a score is increased by will be multiplied by this number
+    //note: if this number is negative, the score will be decreased
+    // a decreased score allows you to be stricter on a specific location instead
+    strict: 1,
+
+    // the below options are disabled and ignored by default
+    //note: each option is added up
+    // specifying a country and region will increase the score twice if neither apply
+
+    country: ['US'], // +4
+
+    //note: if the geoIP module returns null, their score will be increased by +2
+  },
+};
+
+function setRateLimitOptions(opts){
+  if(typeof opts === 'object'){
+    rateLimitOpts = opts
+  }
+}
+
+let publicPath = undefined;
+let publicUrl = undefined;
+function setPublicPath(path, url = '/'){
+  if(varType(path) === 'string'){
+    publicPath = safeJoinPath(root, path);
+  }
+  if(varType(url) === 'string'){
+    publicUrl = url;
+  }
+}
+
+let pwaOpts = undefined;
+function setPWA(opts){
+  if(varType(opts) === 'object'){
+    pwaOpts = opts;
+  }
+}
+
+let viewEnginePath = undefined;
+let viewEngineOpts = undefined;
+function setViewEngine(path, opts){
+  if(typeof path === 'function' || typeof path === 'object'){
+    [path, opts] = [opts, path];
+  }
+
+  if(varType(path) === 'string'){
+    viewEnginePath = safeJoinPath(root, path);
+  }
+
+  if(varType(opts) === 'function' || varType(opts) === 'object'){
+    viewEngineOpts = opts;
+  }
+}
+
+let dataSizeLimit = '10mb';
+function setDataSizeLimit(limit){
+  if(typeof limit === 'number'){
+    dataSizeLimit = limit.toString() + 'mb';
+  }else{
+    dataSizeLimit = limit;
+  }
+}
+
+
+function start(port = 3000, pageHandler){
+  if(typeof port !== 'number'){
+    [port, pageHandler] = [pageHandler, port];
+  }
+  port = Number(port);
+
+  if(!port || typeof port !== 'number'){
+    port = 3000;
   }
 
   const app = express();
-
   app.set('trust proxy', true);
 
   app.use(helmet({
     contentSecurityPolicy: false,
   }));
 
-
-  const delayedIP = {};
-
+  const readyState = 2;
+  let ServerReady = 0;
+  let delayedIP = {};
   app.use(async (req, res, next) => {
-    if(ServerReady){
+    if(ServerReady >= readyState){
       next();
       return;
     }
 
+    if(readyState < 0){
+      res.setHeader('Retry-After', 600);
+      res.setHeader('Refresh', 600);
+
+      res.status(503).send(`<h1>Error: 503 (Service Unavailable)</h1><h2>The server failed to start up. Please wait and try again later.</h2>`).end();
+      return;
+    }
+
     let now = Date.now();
-    while(!ServerReady && Date.now() - now < 5000){ // 5 seconds
+    while(ServerReady < readyState && Date.now() - now < 5000){ // 5 seconds
       await sleep(10);
     }
 
-    if(!ServerReady){
+    if(ServerReady < readyState){
       let ip = clean(clean(req.ip).toString()) || '*';
       if(!delayedIP[ip]){
         delayedIP[ip] = 0;
@@ -392,12 +250,13 @@ function start(port = 3000, pageHandler) {
     next();
   });
 
-
   // init server listener
-  const usePort = normalizePort(clean(process.env.PORT || port || 3000));
+  const usePort = normalizePort(clean(process.env.PORT || port || 3000) || 3000);
   server = http.createServer(app);
 
   server.on('error', function(error) {
+    ServerReady = -1;
+
     if(error.syscall !== 'listen') {
       throw error;
     }
@@ -422,17 +281,19 @@ function start(port = 3000, pageHandler) {
       ? '\x1b[33mpipe ' + addr
       : '\x1b[36mport ' + addr.port;
     console.log('\x1b[32mListening On', bind, '\x1b[0m');
+
+    setTimeout(function(){
+      ServerReady++;
+    }, 100);
   });
 
   server.listen(usePort || 3000);
   server.setTimeout(5250);
 
-
   // setup page handler
   if(['function', 'object', 'string'].includes(varType(pageHandler))) {
     setPages(pageHandler);
   }
-
 
   // setup timeout handler
   app.use(timeout.handler({
@@ -444,7 +305,6 @@ function start(port = 3000, pageHandler) {
     },
   }));
 
-
   // setup
   app.use('/ping', function(req, res) {
     res.status(200).send('pong!').end();
@@ -455,14 +315,8 @@ function start(port = 3000, pageHandler) {
     next();
   });
 
-
-  // firewall
-  const limiter = rateLimit({
-    windowMs: 10 * 60000, // 10 minutes
-    max: 5000,
-    message: 'Too Many Requests!',
-  });
-  app.use(limiter);
+  const rateLimit = deviceRateLimit(rateLimitOpts);
+  rateLimit.all(app);
 
   app.set('forceSSLOptions', {
     enable301Redirects: true,
@@ -474,45 +328,24 @@ function start(port = 3000, pageHandler) {
     app.use(forceSSL);
   }
 
-
   // static path
-  let staticUrl = undefined;
+  const staticPath = publicPath || join(root, 'public');
+  const staticUrl = publicUrl || '/';
 
-  if(staticPath) {
-    if(staticPath === true) {
-      staticPath = join(root, 'public');
-      app.use('/', express.static(staticPath));
-      staticUrl = '';
-    } else if(varType(staticPath) === 'object') {
-      let key = Object.keys(staticPath)[0];
+  if(!fs.existsSync(staticPath)){
+    fs.mkdirSync(staticPath);
 
-      if(!staticPath[key].startsWith(root)){
-        staticPath = join(root, staticPath[key]);
-      }else{
-        staticPath = staticPath[key];
+    let defPublic = join(__dirname, 'defaults/public');
+    const files = fs.readdirSync(defPublic);
+    if(files){
+      for(let i = 0; i < files.length; i++){
+        let path = join(defPublic, files[i]);
+        fs.copyFileSync(path, join(staticPath, files[i]));
       }
-      
-      app.use(key, express.static(staticPath));
-
-      staticUrl = key.replace(/[\\\/]$/, '');
-    } else {
-      app.use('/', express.static(staticPath));
-      staticUrl = '';
-    }
-
-    if(!fs.existsSync(staticPath)){
-      fs.mkdirSync(staticPath);
-    }
-  }else if(staticPath === undefined){
-    staticPath = join(root, 'public');
-    app.use('/', express.static(staticPath));
-    staticUrl = '';
-
-    if(!fs.existsSync(staticPath)){
-      fs.mkdirSync(staticPath);
     }
   }
 
+  app.use(staticUrl, express.static(staticPath));
 
   // pwa
   let usePwa = false;
@@ -526,7 +359,7 @@ function start(port = 3000, pageHandler) {
     let pwaInit = join(staticPath, 'pwa.js');
 
     let pwaIconPath = undefined;
-    
+
     if(pwaOpts.icon){
       pwaIcon = pwaOpts.icon;
       pwaIconType = pwaOpts.icon_type || pwaIcon.replace(/^.*\.([\w_-]+)$/, '$1');
@@ -587,230 +420,187 @@ function start(port = 3000, pageHandler) {
     }
   }
 
-
   // minify
-  if(minifyOpts){
-    // minify js
-    if(minifyOpts.includes('js') && terser){
-      (async function(){
-        const opts = {
-          ecma: 2020,
-          keep_classnames: true,
-          parse: {shebang: true},
-          // ie8: true,
-          compress: {
-            ecma: 2020,
-            keep_infinity: true,
-            passes: 5,
-            top_retain: ['window', 'module', 'global', 'return', 'process'],
-            typeofs: false,
-            // ie8: true,
-          },
-          mangle: {
-            keep_classnames: true,
-            reserved: ['window', 'module', 'global', 'return', 'process'],
-            // ie8: true,
-          },
-        };
-
-        fs.readdirSync(staticPath).forEach(file => {
-          if(!file.endsWith('.js') || file.endsWith('.min.js')){
-            return;
-          }
-          const filePath = join(staticPath, file);
-          fs.readFile(filePath, async (err, data) => {
-            if(err){return;}
-            const min = await terser.minify(data.toString(), opts);
-            if(!min.err && min.code){
-              fs.writeFile(filePath.replace(/\.js$/, '.min.js'), min.code, err => {});
-            }
-          });
-        });
-
-        fs.watch(staticPath, async (event, file) => {
-          if(!file.endsWith('.js') || file.endsWith('.min.js')){
-            return;
-          }
-
-          const filePath = join(staticPath, file);
-
-          if(!fs.existsSync(filePath)){
-            fs.unlink(filePath.replace(/\.js$/, '.min.js'), err => {});
-            return;
-          }
-
-          fs.readFile(filePath, async (err, data) => {
-            if(err){return;}
-            const min = await terser.minify(data.toString(), opts);
-            if(!min.err && min.code){
-              fs.writeFile(filePath.replace(/\.js$/, '.min.js'), min.code, err => {});
-            }else if(!min.err){
-              fs.unlink(filePath.replace(/\.js$/, '.min.js'), err => {});
-            }
-          });
-        });
-      })();
-    }
-
-    // minify css
-    if(minifyOpts.includes('css') && csso){
-      (async function(){
-        fs.readdirSync(staticPath).forEach(file => {
-          if(!file.endsWith('.css') || file.endsWith('.min.css')){
-            return;
-          }
-          const filePath = join(staticPath, file);
-          fs.readFile(filePath, async (err, data) => {
-            if(err){return;}
-            const min = csso.minify(data.toString());
-            if(!min.err && min.css){
-              fs.writeFile(filePath.replace(/\.css$/, '.min.css'), min.css, err => {});
-            }
-          });
-        });
-
-        fs.watch(staticPath, async (event, file) => {
-          if(!file.endsWith('.css') || file.endsWith('.min.css')){
-            return;
-          }
-
-          const filePath = join(staticPath, file);
-
-          if(!fs.existsSync(filePath)){
-            fs.unlink(filePath.replace(/\.css$/, '.min.css'), err => {});
-            return;
-          }
-
-          fs.readFile(filePath, async (err, data) => {
-            if(err){return;}
-            const min = csso.minify(data.toString());
-            if(!min.err && min.css){
-              fs.writeFile(filePath.replace(/\.css$/, '.min.css'), min.css, err => {});
-            }else if(!min.err){
-              fs.unlink(filePath.replace(/\.css$/, '.min.css'), err => {});
-            }
-          });
-        });
-      })();
-    }
-  }
-
+  //todo: watch public dir and auto minify js and css
 
   // view engine
-  function buildViewEngineTemplate(views, layout, ext = 'html') {
-    if(views && !fs.existsSync(views)) {
-      try {
-        fs.mkdirSync(views);
-      } catch(e) {}
-    }
-    if(layout) {
-      let layoutPath = join(views, layout + '.' + ext);
-      if(!fs.existsSync(layoutPath)){
-        try {
-          fs.copyFileSync(join(__dirname, 'views/layout.html'), layoutPath);
-        } catch(e) {}
+  let viewPath = viewEnginePath || join(root, 'views');
+
+  if(!fs.existsSync(viewPath)){
+    fs.mkdirSync(viewPath);
+
+    let defPublic = join(__dirname, 'defaults/views');
+    const files = fs.readdirSync(defPublic);
+    if(files){
+      for(let i = 0; i < files.length; i++){
+        let path = join(defPublic, files[i]);
+        fs.copyFileSync(path, join(viewPath, files[i]));
       }
     }
   }
 
-  if(varType(viewEngine) === 'function') {
-    viewEngine(app);
-  } else {
-    const viewVars = {
-      static: staticUrl,
-      pwa: usePwa,
-      icon: pwaIcon,
-      icon_type: pwaIconType,
-      min: {
-        js: (minifyOpts && minifyOpts.includes('js')) ? 'min.js' : 'js',
-        css: (minifyOpts && minifyOpts.includes('css')) ? 'min.css' : 'css',
-      }
-    };
-
-    if(varType(viewEngine) === 'object') {
-      let viewData = null;
-      let engines = Object.keys(ViewEngines);
-      for(let i = 0; i < engines.length; i++){
-        if(ViewEngines[engines[i]].engine && typeof ViewEngines[engines[i]].engine !== 'string'){
-          viewData = ViewEngines[engines[i]].handler.call(ViewEngines[engines[i]], app, viewVars, viewEngine);
-          break;
-        }
-      }
-
-      if(viewData){
-        buildViewEngineTemplate(viewData.path, viewEngine.template || viewEngine.layout || null, viewData.ext);
-      }
-    } else if(varType(viewEngine) === 'string') {
-      if(viewEngineOpts) {
-
-        let viewData = null;
-        if(ViewEngines[viewEngine]){
-          if(typeof ViewEngines[viewEngine].engine === 'string'){
-            console.warn(ViewEngines[viewEngine].engine)
-          }else{
-            viewData = ViewEngines[viewEngine].handler.call(ViewEngines[viewEngine], app, viewVars, viewEngineOpts);
-          }
-        }else{
-          let engines = Object.keys(ViewEngines);
-          for(let i = 0; i < engines.length; i++){
-            if(ViewEngines[engines[i]].engine && typeof ViewEngines[engines[i]].engine !== 'string'){
-              viewData = ViewEngines[engines[i]].handler.call(ViewEngines[engines[i]], app, viewVars, viewEngineOpts);
-              break;
-            }
-          }
-        }
-
-        if(viewData){
-          buildViewEngineTemplate(viewData.path, viewEngineOpts.template || viewEngineOpts.layout || null, viewData.ext);
-        }
-      } else {
-        let viewData = null;
-        if(ViewEngines[viewEngine]){
-          if(typeof ViewEngines[viewEngine].engine === 'string'){
-            console.warn(ViewEngines[viewEngine].engine)
-          }else{
-            viewData = ViewEngines[viewEngine].handler.call(ViewEngines[viewEngine], app, viewVars, viewEngineOpts);
-          }
-        }else{
-          let engines = Object.keys(ViewEngines);
-          for(let i = 0; i < engines.length; i++){
-            if(ViewEngines[engines[i]].engine && typeof ViewEngines[engines[i]].engine !== 'string'){
-              viewData = ViewEngines[engines[i]].handler.call(ViewEngines[engines[i]], app, viewVars, viewEngineOpts);
-              break;
-            }
-          }
-        }
-
-        if(viewData){
-          buildViewEngineTemplate(viewData.path, 'layout', viewData.ext);
-        }
-      }
-    } else if(viewEngine !== null) {
-      let viewData = null;
-      let engines = Object.keys(ViewEngines);
-      for(let i = 0; i < engines.length; i++){
-        if(ViewEngines[engines[i]].engine && typeof ViewEngines[engines[i]].engine !== 'string'){
-          viewData = ViewEngines[engines[i]].handler.call(ViewEngines[engines[i]], app, viewVars);
-          break;
-        }
-      }
-
-      if(viewData){
-        buildViewEngineTemplate(viewData.path, 'layout', viewData.ext);
-      }
+  const viewVars = {
+    static: staticUrl,
+    pwa: usePwa,
+    icon: pwaIcon,
+    icon_type: pwaIconType,
+    min: {
+      js: (terser) ? 'min.js' : 'js',
+      css: (csso) ? 'min.css' : 'css',
     }
-  }
+  };
 
+  if(varType(viewEngineOpts) === 'function'){
+    const cb = viewEngineOpts(app, viewVars);
+    if(varType(cb) === 'function'){
+      app.engine('html', cb);
+      app.set('views', viewPath);
+      app.set('view engine', 'html');
+    }else if(varType(cb) === 'array'){
+      let fn, ext, opts;
+      for(let i = 0; i < cb.length; i++){
+        if(varType(cb[i]) === 'function'){
+          fn = cb[i];
+        }else if(varType(cb[i]) === 'string'){
+          ext = cb[i];
+        }else if(varType(cb[i]) === 'object'){
+          opts = cb[i];
+        }
+      }
+
+      if(!fn){
+        if(!opts){
+          opts = {};
+        }
+
+        let template = opts.template || opts.layout || 'layout';
+        let cache = opts.cache || '1D';
+
+        fn = turbx({
+          template: template,
+          opts: viewVars,
+          public: staticPath,
+          root: root,
+          views: viewPath,
+          ext: ext,
+          cache: cache,
+          ...opts,
+        }, app);
+      }else if(opts){
+        let template = opts.template || opts.layout || 'layout';
+        let cache = opts.cache || '1D';
+
+        fn = fn({
+          template: template,
+          opts: viewVars,
+          public: staticPath,
+          root: root,
+          views: viewPath,
+          ext: ext,
+          cache: cache,
+          ...opts,
+        });
+      }
+
+      app.engine(ext, fn);
+      app.set('views', viewPath);
+      app.set('view engine', ext);
+    }else if(varType(cb) === 'object'){
+      let fn = cb.cb || cb.fn;
+      let ext = cb.ext || cb.type;
+      let opts = cb.opts;
+
+      if(!fn){
+        if(!opts){
+          opts = {};
+        }
+
+        let template = opts.template || opts.layout || 'layout';
+        let cache = opts.cache || '1D';
+
+        fn = turbx({
+          template: template,
+          opts: viewVars,
+          public: staticPath,
+          root: root,
+          views: viewPath,
+          ext: ext,
+          cache: cache,
+          ...opts,
+        }, app);
+      }else if(opts){
+        let template = opts.template || opts.layout || 'layout';
+        let cache = opts.cache || '1D';
+
+        fn = fn({
+          template: template,
+          opts: viewVars,
+          public: staticPath,
+          root: root,
+          views: viewPath,
+          ext: ext,
+          cache: cache,
+          ...opts,
+        });
+      }
+
+      app.engine(ext, fn);
+      app.set('views', viewPath);
+      app.set('view engine', ext);
+    }
+  }else if(varType(viewEngineOpts) === 'object'){
+    const engine = turbx || viewEngineOpts.cb || viewEngineOpts.fn;
+    if(varType(engine) === 'function'){
+      let template = viewEngineOpts.template || viewEngineOpts.layout || 'layout';
+      let ext = viewEngineOpts.ext || viewEngineOpts.type || 'html';
+      let cache = viewEngineOpts.cache || '1D';
+
+      if(turbx){
+        const opts = {...viewEngineOpts}
+        delete opts.template;
+        delete opts.layout;
+        delete opts.ext;
+        delete opts.type;
+        delete opts.cache;
+
+        app.engine(ext, engine({
+          template: template,
+          opts: viewVars,
+          public: staticPath,
+          root: root,
+          views: viewPath,
+          ext: ext,
+          cache: cache,
+          ...opts,
+        }, app));
+      }else{
+        app.engine(ext, engine(viewEngineOpts));
+      }
+
+      app.set('views', viewPath);
+      app.set('view engine', ext);
+    }
+  }else if(turbx){
+    app.engine('html', turbx({
+      template: 'layout',
+      opts: viewVars,
+      public: staticPath,
+      root: root,
+      views: viewPath,
+      ext: 'html',
+      cache: '1D',
+    }, app));
+    app.set('views', viewPath);
+    app.set('view engine', 'html');
+  }
 
   // middleware
-  app.use(express.json({limit: expressLimit}));
-  app.use(express.urlencoded({extended: GlobalOptions.expressExtended}));
+  app.use(express.json({limit: dataSizeLimit}));
+  app.use(express.urlencoded({extended: false}));
   app.use(cookieParser());
-  app.use(bodyParser.urlencoded({extended: GlobalOptions.bodyParserExtended}));
-  app.use(bodyParser.json({type: ['json', 'application/csp-report'], limit: expressLimit}));
-  app.use(compression());
+  app.use(bodyParser.urlencoded({extended: false}));
+  app.use(bodyParser.json({type: ['json', 'application/csp-report'], limit: dataSizeLimit}));
   isBot.extend(['validator']);
-
 
   app.use((req, res, next) => {
     req.root = root;
@@ -822,10 +612,10 @@ function start(port = 3000, pageHandler) {
     req.query = clean(req.query);
     req.body = clean(req.body);
     req.params = clean(req.params);
-    req.data = clean(req.data);
+    req.data = {};
 
     req.static = staticUrl;
-    req.limit = expressLimit;
+    req.limit = dataSizeLimit;
 
     let host = clean(req.hostname || req.headers.host || '');
     if(process.env.NODE_ENV === 'production' && (!host || varType(host) !== 'string' || host === '' || !validator.isFQDN(host))) {
@@ -892,7 +682,6 @@ function start(port = 3000, pageHandler) {
     next();
   });
 
-
   app.post('*', (req, res, next) => {
     if(!req.data || varType(req.data) !== 'object') {
       req.data = {};
@@ -934,16 +723,15 @@ function start(port = 3000, pageHandler) {
   });
 
   setTimeout(function(){
-    ServerReady = true;
+    ServerReady++;
     console.log('\x1b[32mServer Ready!', '\x1b[0m');
 
-    Object.keys(delayedIP).forEach(function(ip){
-      delete delayedIP[ip];
-    });
+    delayedIP = {};
   }, 100);
 
   return app;
 }
+
 
 function normalizePort(val) {
   let port = parseInt(val, 10);
@@ -1076,39 +864,21 @@ function varType(value) {
   return typeof value;
 }
 
+
 module.exports = (() => {
   const exports = function(port = 3000, pageHandler) {
     start(port, pageHandler);
   };
-  exports.viewEngine = setViewEngine;
   exports.pages = setPages;
-  exports.static = setStaticPath;
   exports.pwa = setPWA;
-  exports.limit = setExpressLimit;
-  exports.minify = setMinifyOpts;
+  exports.engine = setViewEngine;
+  exports.dataLimit = setDataSizeLimit;
+  exports.public = setPublicPath;
+  exports.rateLimit = setRateLimitOptions;
 
-  exports.extended = function(express = true, bodyParser = true){
-    GlobalOptions.expressExtended = express;
-    GlobalOptions.bodyParserExtended = bodyParser;
-  };
-
-  exports.setRoot = function(path){
-    root = clean(resolve(path.toString()).toString()).replace(/[\\\/][^\\\/]+[\\\/]?$/, '');
-  }
-
-  exports.randToken = generateRandToken;
   exports.clean = clean;
   exports.varType = varType;
-
-  exports.server = server;
-  exports.express = express;
-  exports.regve = regve;
-  exports.helmet = helmet;
-  exports.validator = validator;
-  exports.geoIP = geoIP;
-  exports.isBot = isBot;
-
-  exports.root = root;
+  exports.randToken = generateRandToken;
   exports.path = safeJoinPath;
 
   exports.turbx = turbx;
