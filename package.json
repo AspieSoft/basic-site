@@ -33,7 +33,7 @@
     "express-rate-limit": "^6.6.0",
     "express-timeout-handler": "^2.2.2",
     "geoip-lite": "^1.4.6",
-    "helmet": "^6.0.0",
+    "helmet": "^6.2.0",
     "isbot-fast": "^1.2.0",
     "validator": "^13.7.0"
   },
