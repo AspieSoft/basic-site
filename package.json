@@ -32,7 +32,7 @@
     "express-force-ssl": "^0.3.2",
     "express-rate-limit": "^6.6.0",
     "express-timeout-handler": "^2.2.2",
-    "geoip-lite": "^1.4.6",
+    "geoip-lite": "^1.4.7",
     "helmet": "^6.0.0",
     "isbot-fast": "^1.2.0",
     "validator": "^13.9.0"
